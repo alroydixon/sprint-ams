@@ -11,12 +11,14 @@ function AuthForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [mode, setMode] = useState<'login' | 'signup'>('login');
-  const [role, setRole] = useState<'athlete' | 'coach' | 'medical'>('athlete');
+  const [role, setRole] = useState<'athlete' | 'coach' | 'medical' | 'manager'>('athlete');
   const [discipline, setDiscipline] = useState<CoachingDiscipline>('sprints');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [coachId, setCoachId] = useState('');
+  const [managerId, setManagerId] = useState('');
+  const [claimAthleteId, setClaimAthleteId] = useState('');
   const [inviteCode, setInviteCode] = useState('');
   const [specialty, setSpecialty] = useState('Sports Physician');
   const [grade, setGrade] = useState('Grade 11');
@@ -28,13 +30,34 @@ function AuthForm() {
   useEffect(() => {
     const qRole = searchParams.get('role');
     const qCoach = searchParams.get('coach');
-    if (qRole === 'athlete' || qRole === 'medical' || qRole === 'coach') {
+    const qManager = searchParams.get('manager');
+    const qAthlete = searchParams.get('athlete');
+
+    if (qRole === 'athlete' || qRole === 'medical' || qRole === 'coach' || qRole === 'manager') {
       setRole(qRole);
       setMode('signup');
     }
     if (qCoach) {
       setCoachId(qCoach);
       setMode('signup');
+    }
+    if (qManager) {
+      setManagerId(qManager);
+      setRole('coach');
+      setMode('signup');
+    }
+    if (qAthlete) {
+      setClaimAthleteId(qAthlete);
+      setRole('athlete');
+      setMode('signup');
+      supabase.from('profiles').select('full_name, grade, age, gender').eq('id', qAthlete).maybeSingle().then(({ data }) => {
+        if (data) {
+          if (data.full_name) setFullName(data.full_name);
+          if (data.grade) setGrade(data.grade);
+          if (data.age) setAge(String(data.age));
+          if (data.gender) setGender(data.gender);
+        }
+      });
     }
   }, [searchParams]);
 
@@ -48,16 +71,21 @@ function AuthForm() {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
 
-        const { data: prof } = await supabase.from('profiles').select('role').eq('id', data.user.id).single();
-        if (prof?.role === 'coach') router.push('/coach');
+        const { data: prof } = await supabase.from('profiles').select('role, is_suspended').eq('id', data.user.id).single();
+        if (prof?.is_suspended) {
+          await supabase.auth.signOut();
+          throw new Error('Your program access has been suspended. Contact your Program Manager.');
+        }
+        if (prof?.role === 'manager') router.push('/manager');
+        else if (prof?.role === 'coach') router.push('/coach');
         else if (prof?.role === 'medical') router.push('/medical');
         else router.push('/athlete');
       } else {
         const cleanCoachId = coachId.trim();
-        const isJoiningExistingSquad = Boolean(cleanCoachId);
+        const cleanManagerId = managerId.trim();
         let resolvedDiscipline: CoachingDiscipline = discipline;
 
-        if (isJoiningExistingSquad) {
+        if (cleanCoachId) {
           const isStaff = role === 'coach' || role === 'medical';
           const { data: isValid, error: codeErr } = await supabase.rpc('verify_squad_invite_code', {
             p_coach_id: cleanCoachId,
@@ -65,20 +93,20 @@ function AuthForm() {
             p_is_staff: isStaff,
           });
           if (codeErr || !isValid) {
-            throw new Error(
-              isStaff
-                ? 'Invalid Staff Access Code. Ask the Head Coach for the Staff Invite Code.'
-                : 'Invalid Squad Access Code. Ask your Coach for the Squad Invite Code.'
-            );
+            throw new Error(isStaff ? 'Invalid Staff Access Code.' : 'Invalid Squad Access Code.');
           }
 
-          const { data: headCoachProf } = await supabase
-            .from('profiles')
-            .select('coaching_discipline')
-            .eq('id', cleanCoachId)
-            .maybeSingle();
+          const { data: headCoachProf } = await supabase.from('profiles').select('coaching_discipline').eq('id', cleanCoachId).maybeSingle();
           if (headCoachProf?.coaching_discipline) {
             resolvedDiscipline = headCoachProf.coaching_discipline as CoachingDiscipline;
+          }
+        } else if (role === 'coach' && cleanManagerId) {
+          const { data: mgrValid, error: mgrErr } = await supabase.rpc('verify_program_invite_code', {
+            p_manager_id: cleanManagerId,
+            p_code: inviteCode.trim(),
+          });
+          if (mgrErr || !mgrValid) {
+            throw new Error('Invalid Program Access Code. Ask your Program Manager.');
           }
         }
 
@@ -97,10 +125,13 @@ function AuthForm() {
           p_grade: role === 'athlete' ? grade : null,
           p_age: role === 'athlete' ? parseInt(age) || null : null,
           p_gender: role === 'athlete' ? gender : null,
+          p_claim_athlete_id: claimAthleteId.trim() || null,
+          p_program_manager_id: role === 'coach' && !cleanCoachId ? cleanManagerId || null : null,
         });
         if (profErr) throw profErr;
 
-        if (role === 'coach') router.push('/coach');
+        if (role === 'manager') router.push('/manager');
+        else if (role === 'coach') router.push('/coach');
         else if (role === 'medical') router.push('/medical');
         else router.push('/athlete');
       }
@@ -142,13 +173,14 @@ function AuthForm() {
               gender={gender} setGender={setGender}
               specialty={specialty} setSpecialty={setSpecialty}
               coachId={coachId} setCoachId={setCoachId}
+              managerId={managerId} setManagerId={setManagerId}
               inviteCode={inviteCode} setInviteCode={setInviteCode}
             />
           )}
 
           <div>
             <label className="block text-xs text-slate-400 mb-1">Email Address</label>
-            <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="athlete@school.co.za" className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm" />
+            <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="coach@school.co.za" className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm" />
           </div>
 
           <div>
