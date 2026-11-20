@@ -7,10 +7,12 @@ import { X, Camera } from 'lucide-react';
 
 export default function ProfileSettingsModal({
   profile,
+  isCoachEditingAthlete = false,
   onUpdated,
   onClose,
 }: {
   profile: any;
+  isCoachEditingAthlete?: boolean;
   onUpdated: (updated: any) => void;
   onClose: () => void;
 }) {
@@ -27,7 +29,7 @@ export default function ProfileSettingsModal({
   const [saving, setSaving] = useState(false);
 
   async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.at(0);
+    const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
     const ext = file.name.split('.').pop() || 'jpg';
@@ -72,7 +74,9 @@ export default function ProfileSettingsModal({
     <div onClick={onClose} className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
       <div onClick={(e) => e.stopPropagation()} className="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-5 space-y-4 text-xs max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-          <h3 className="text-base font-bold text-emerald-400">Edit Profile &amp; Photo</h3>
+          <h3 className="text-base font-bold text-emerald-400">
+            {isCoachEditingAthlete ? `Edit Athlete • ${profile.full_name}` : 'Edit Profile & Photo'}
+          </h3>
           <button type="button" onClick={onClose} className="p-1.5 rounded-lg bg-slate-800 text-slate-300"><X className="w-4 h-4" /></button>
         </div>
 
