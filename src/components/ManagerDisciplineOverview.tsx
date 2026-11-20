@@ -5,28 +5,34 @@ import { getReadinessStatus } from '@/lib/biomechanics';
 import { getPrimaryHeadlineEvents, formatMark, isBetterMark } from '@/lib/disciplines';
 import CoachApeScoreTab from './CoachApeScoreTab';
 import CoachRecordsTab from './CoachRecordsTab';
+import ManagerMedicalTab from './ManagerMedicalTab';
 import ManagerAthleteReadOnlyModal from './ManagerAthleteReadOnlyModal';
-import { HeartPulse, Users, Award, Trophy, Eye } from 'lucide-react';
+import { HeartPulse, Users, Award, Trophy, Stethoscope, Eye } from 'lucide-react';
 
 export default function ManagerDisciplineOverview({
+  managerName,
   discipline,
   coaches,
   athletes,
   races,
   wellness,
+  medical,
   dateFrom = '',
   dateTo = '',
+  onRefresh,
 }: {
+  managerName: string;
   discipline: string;
   coaches: any[];
   athletes: any[];
   races: any[];
   wellness: any[];
+  medical: any[];
   dateFrom?: string;
   dateTo?: string;
+  onRefresh: () => void;
 }) {
-
-  const [subTab, setSubTab] = useState<'athletes' | 'ape' | 'records'>('athletes');
+  const [subTab, setSubTab] = useState<'athletes' | 'ape' | 'records' | 'medical'>('athletes');
   const [inspectAthlete, setInspectAthlete] = useState<any>(null);
 
   const activeAthletes = useMemo(() => athletes.filter((a) => !a.is_archived), [athletes]);
@@ -50,6 +56,8 @@ export default function ManagerDisciplineOverview({
     const avg = scores.length > 0 ? +(scores.reduce((acc, v) => acc + v, 0) / scores.length).toFixed(1) : null;
     return { avg, checkedIn: scores.length, green, amber, red };
   }, [activeAthletes, wellness]);
+
+  const activeInjuryCount = useMemo(() => medical.filter((m) => !m.is_cleared).length, [medical]);
 
   return (
     <div className="space-y-5">
@@ -79,17 +87,17 @@ export default function ManagerDisciplineOverview({
             <Users className="w-3.5 h-3.5 text-sky-400" /> Discipline Roster
           </span>
           <strong className="text-2xl text-white font-mono block mt-1">{activeAthletes.length}</strong>
-          <span className="text-[11px] text-slate-400">{coaches.length} Coach{coaches.length === 1 ? '' : 'es'}</span>
+          <span className="text-[11px] text-slate-400">{coaches.length} Coach{coaches.length === 1 ? '' : 'es'} • {activeInjuryCount} Injured</span>
         </div>
 
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5">
           <span className="text-slate-400 font-semibold block">Logged Results</span>
           <strong className="text-2xl text-amber-300 font-mono block mt-1">{races.length}</strong>
-          <span className="text-[11px] text-slate-400">Read-Only View</span>
+          <span className="text-[11px] text-slate-400">Filtered Date Period</span>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 bg-slate-900 p-1.5 rounded-xl border border-slate-800 text-xs">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-900 p-1.5 rounded-xl border border-slate-800 text-xs">
         <button type="button" onClick={() => setSubTab('athletes')} className={`flex items-center justify-center gap-1.5 py-2 rounded-lg font-semibold ${subTab === 'athletes' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}>
           <Users className="w-3.5 h-3.5" /> Athletes &amp; Results
         </button>
@@ -98,6 +106,9 @@ export default function ManagerDisciplineOverview({
         </button>
         <button type="button" onClick={() => setSubTab('records')} className={`flex items-center justify-center gap-1.5 py-2 rounded-lg font-semibold ${subTab === 'records' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}>
           <Trophy className="w-3.5 h-3.5" /> Event Records
+        </button>
+        <button type="button" onClick={() => setSubTab('medical')} className={`flex items-center justify-center gap-1.5 py-2 rounded-lg font-semibold ${subTab === 'medical' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}>
+          <Stethoscope className="w-3.5 h-3.5" /> Medical ({activeInjuryCount})
         </button>
       </div>
 
@@ -153,6 +164,15 @@ export default function ManagerDisciplineOverview({
 
       {subTab === 'ape' && <CoachApeScoreTab athletes={activeAthletes} races={races} discipline={discipline} dateFrom={dateFrom} dateTo={dateTo} />}
       {subTab === 'records' && <CoachRecordsTab athletes={athletes} races={races} discipline={discipline} />}
+      {subTab === 'medical' && (
+        <ManagerMedicalTab
+          managerName={managerName}
+          coaches={coaches}
+          athletes={activeAthletes}
+          medical={medical}
+          onSaved={onRefresh}
+        />
+      )}
 
       {inspectAthlete && (
         <ManagerAthleteReadOnlyModal
