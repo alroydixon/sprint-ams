@@ -173,7 +173,7 @@ export default function CoachDashboard() {
           <CoachPeriodizationTab coachId={effectiveCoachId} blocks={blocks} sessions={sessions} activeAthleteCount={activeAthletes.length} onSaved={loadSquadData} />
         )}
         {tab === 'records' && <CoachRecordsTab athletes={athletes} races={races} />}
-        {tab === 'ape' && <CoachApeScoreTab athletes={activeAthletes} races={filteredRaces} dateFrom={dateFrom} dateTo={dateTo} />}
+        {tab === 'ape' && <CoachApeScoreTab athletes={activeAthletes} races={filteredRaces} discipline={coach.coaching_discipline} dateFrom={dateFrom} dateTo={dateTo} />}
         {tab === 'relays' && <CoachRelayTab athletes={activeAthletes} races={races} medical={medical} wellness={wellness} />}
         {tab === 'import' && <CoachImportExportTab athletes={athletes} races={filteredRaces} tests={filteredTests} onImported={loadSquadData} />}
       </main>

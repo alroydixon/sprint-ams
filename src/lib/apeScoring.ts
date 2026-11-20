@@ -1,5 +1,4 @@
-// Official 2024 - 2027 ASA / SASA High Schools Athletics Performance Evaluation (APE) Tables
-// Anchored to exact 1000-pt and 500-pt electronic times from the uploaded Bekker Sport tables
+import { EXTRA_APE_ANCHORS } from './apeFieldAndDistanceAnchors';
 
 export type ApeAgeBand = 'U15' | 'U16' | 'U17' | 'U18' | 'U20';
 export type ApeGender = 'Boy' | 'Girl';
@@ -9,7 +8,7 @@ interface EventAnchor {
   t500: number;
 }
 
-const APE_ANCHORS: Record<ApeGender, Record<ApeAgeBand, Record<string, EventAnchor>>> = {
+const SPRINT_APE_ANCHORS: Record<ApeGender, Record<ApeAgeBand, Record<string, EventAnchor>>> = {
   Boy: {
     U15: {
       '100m': { t1000: 10.70, t500: 13.27 },
@@ -107,26 +106,43 @@ export function calculateApePoints(
   age: number | null | undefined,
   grade: string | null | undefined,
   event: string,
-  timeSeconds: number
-): { points: number; ageBand: ApeAgeBand; standardBadge: string } | null {
-  if (!timeSeconds || timeSeconds <= 0) return null;
+  markValue: number
+): { points: number; ageBand: ApeAgeBand; standardBadge: string; isField: boolean } | null {
+  if (!markValue || markValue <= 0) return null;
 
   const gen: ApeGender = (gender || '').toLowerCase().startsWith('g') || (gender || '').toLowerCase().startsWith('f')
     ? 'Girl'
     : 'Boy';
   const ageBand = resolveApeAgeBand(age, grade);
-  const anchor = APE_ANCHORS[gen]?.[ageBand]?.[event];
-  if (!anchor) return null;
 
-  const k = Math.log(0.5) / Math.log(anchor.t1000 / anchor.t500);
-  const rawPts = 1000 * Math.pow(anchor.t1000 / timeSeconds, k);
+  let rawPts = 0;
+  let isField = false;
+
+  const sprintAnchor = SPRINT_APE_ANCHORS[gen]?.[ageBand]?.[event];
+  const extraAnchor = EXTRA_APE_ANCHORS[gen]?.[ageBand]?.[event];
+
+  if (sprintAnchor) {
+    const k = Math.log(0.5) / Math.log(sprintAnchor.t1000 / sprintAnchor.t500);
+    rawPts = 1000 * Math.pow(sprintAnchor.t1000 / markValue, k);
+  } else if (extraAnchor) {
+    isField = Boolean(extraAnchor.isField);
+    if (isField) {
+      const k = Math.log(0.5) / Math.log(extraAnchor.b500 / extraAnchor.b1000);
+      rawPts = 1000 * Math.pow(markValue / extraAnchor.b1000, k);
+    } else {
+      const k = Math.log(0.5) / Math.log(extraAnchor.b1000 / extraAnchor.b500);
+      rawPts = 1000 * Math.pow(extraAnchor.b1000 / markValue, k);
+    }
+  } else {
+    return null;
+  }
+
   const points = Math.max(0, Math.round(rawPts));
 
-  // Official APE colour standards: Green >= 900 (International), Yellow >= 800 (National), Blue >= 650 (Provincial), White < 650 (Development)
   let standardBadge = 'Development';
   if (points >= 900) standardBadge = 'International';
   else if (points >= 800) standardBadge = 'National';
   else if (points >= 650) standardBadge = 'Provincial';
 
-  return { points, ageBand, standardBadge };
+  return { points, ageBand, standardBadge, isField };
 }
