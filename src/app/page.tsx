@@ -72,7 +72,6 @@ function AuthForm() {
             );
           }
 
-          // Inherit Head Coach's coaching_discipline automatically
           const { data: headCoachProf } = await supabase
             .from('profiles')
             .select('coaching_discipline')
@@ -87,26 +86,19 @@ function AuthForm() {
         if (error) throw error;
         if (!data.user) throw new Error('Signup failed. Please try again.');
 
-        const { error: profErr } = await supabase.from('profiles').insert({
-          id: data.user.id,
-          role,
-          coaching_discipline: resolvedDiscipline,
-          full_name: fullName.trim(),
-          email: email.trim(),
-          coach_id: role === 'coach' ? null : cleanCoachId || null,
-          specialty: role === 'medical' ? specialty : null,
-          grade: role === 'athlete' ? grade : null,
-          age: role === 'athlete' ? parseInt(age) || null : null,
-          gender: role === 'athlete' ? gender : null,
+        const { error: profErr } = await supabase.rpc('complete_user_signup', {
+          p_user_id: data.user.id,
+          p_role: role,
+          p_discipline: resolvedDiscipline,
+          p_full_name: fullName.trim(),
+          p_email: email.trim(),
+          p_coach_id: cleanCoachId || null,
+          p_specialty: role === 'medical' ? specialty : null,
+          p_grade: role === 'athlete' ? grade : null,
+          p_age: role === 'athlete' ? parseInt(age) || null : null,
+          p_gender: role === 'athlete' ? gender : null,
         });
         if (profErr) throw profErr;
-
-        if (role === 'coach' && isJoiningExistingSquad) {
-          await supabase.from('squad_coaches').insert({
-            head_coach_id: cleanCoachId,
-            assistant_coach_id: data.user.id,
-          });
-        }
 
         if (role === 'coach') router.push('/coach');
         else if (role === 'medical') router.push('/medical');
