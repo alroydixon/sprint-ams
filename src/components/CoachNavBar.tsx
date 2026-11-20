@@ -1,8 +1,8 @@
 'use client';
 
-import { Users, HeartPulse, Stethoscope, CalendarRange, Trophy, Award, FileSpreadsheet } from 'lucide-react';
+import { Users, HeartPulse, Stethoscope, CalendarRange, Trophy, Award, Zap, FileSpreadsheet } from 'lucide-react';
 
-export type CoachTab = 'squad' | 'wellness' | 'medical' | 'season' | 'records' | 'ape' | 'import';
+export type CoachTab = 'squad' | 'wellness' | 'medical' | 'season' | 'records' | 'ape' | 'relays' | 'import';
 
 const NAV_ITEMS: { id: CoachTab; label: string; Icon: any }[] = [
   { id: 'squad', label: 'Squad', Icon: Users },
@@ -11,6 +11,7 @@ const NAV_ITEMS: { id: CoachTab; label: string; Icon: any }[] = [
   { id: 'season', label: 'Season Plan', Icon: CalendarRange },
   { id: 'records', label: 'Records', Icon: Trophy },
   { id: 'ape', label: 'APE Score', Icon: Award },
+  { id: 'relays', label: 'Relays', Icon: Zap },
   { id: 'import', label: 'Import', Icon: FileSpreadsheet },
 ];
 
@@ -22,7 +23,7 @@ export default function CoachNavBar({
   onChange: (next: CoachTab) => void;
 }) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-7 gap-2 bg-slate-900 p-1.5 rounded-xl border border-slate-800">
+    <div className="grid grid-cols-2 sm:grid-cols-8 gap-2 bg-slate-900 p-1.5 rounded-xl border border-slate-800">
       {NAV_ITEMS.map(({ id, label, Icon }) => (
         <button
           key={id}

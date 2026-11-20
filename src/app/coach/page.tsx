@@ -11,6 +11,7 @@ import MedicalHubTab from '@/components/MedicalHubTab';
 import CoachPeriodizationTab from '@/components/CoachPeriodizationTab';
 import CoachRecordsTab from '@/components/CoachRecordsTab';
 import CoachApeScoreTab from '@/components/CoachApeScoreTab';
+import CoachRelayTab from '@/components/CoachRelayTab';
 import CoachImportExportTab from '@/components/CoachImportExportTab';
 import ProfileSettingsModal from '@/components/ProfileSettingsModal';
 import WeeklyDigestModal from '@/components/WeeklyDigestModal';
@@ -159,6 +160,7 @@ export default function CoachDashboard() {
         )}
         {tab === 'records' && <CoachRecordsTab athletes={athletes} races={races} />}
         {tab === 'ape' && <CoachApeScoreTab athletes={activeAthletes} races={filteredRaces} dateFrom={dateFrom} dateTo={dateTo} />}
+        {tab === 'relays' && <CoachRelayTab athletes={activeAthletes} races={races} medical={medical} wellness={wellness} />}
         {tab === 'import' && <CoachImportExportTab athletes={athletes} races={filteredRaces} tests={filteredTests} onImported={loadSquadData} />}
       </main>
 
