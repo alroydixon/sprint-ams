@@ -16,6 +16,7 @@ import CoachImportExportTab from '@/components/CoachImportExportTab';
 import ProfileSettingsModal from '@/components/ProfileSettingsModal';
 import WeeklyDigestModal from '@/components/WeeklyDigestModal';
 import { Calendar } from 'lucide-react';
+import CoachMeetsTab from '@/components/CoachMeetsTab';
 
 async function fetchAllRaces(ids: string[]) {
   const all: any[] = [];
@@ -170,6 +171,7 @@ export default function CoachDashboard() {
           <MedicalHubTab coachId={effectiveCoachId} reporterName={`Coach ${coach.full_name}`} isCoach={true} athletes={activeAthletes} medical={medical} onSaved={loadSquadData} />
         )}
         {tab === 'season' && (
+          {tab === 'meets' && <CoachMeetsTab coachId={effectiveCoachId} discipline={coach.coaching_discipline} athletes={activeAthletes} />}
           <CoachPeriodizationTab coachId={effectiveCoachId} blocks={blocks} sessions={sessions} activeAthleteCount={activeAthletes.length} onSaved={loadSquadData} />
         )}
         {tab === 'records' && <CoachRecordsTab athletes={athletes} races={races} />}

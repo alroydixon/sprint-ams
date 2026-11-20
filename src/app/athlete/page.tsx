@@ -10,6 +10,7 @@ import AthleteRacesTab from '@/components/AthleteRacesTab';
 import AthleteTrainingTab from '@/components/AthleteTrainingTab';
 import AthleteTestsCard from '@/components/AthleteTestsCard';
 import AthleteWellnessTab from '@/components/AthleteWellnessTab';
+import AthleteUpcomingMeetsCard from '@/components/AthleteUpcomingMeetsCard';
 import AthleteMeetDayTab from '@/components/AthleteMeetDayTab';
 import ProfileSettingsModal from '@/components/ProfileSettingsModal';
 
@@ -156,7 +157,12 @@ export default function AthleteDashboard() {
           </div>
         )}
         {tab === 'wellness' && <AthleteWellnessTab athleteId={profile.id} logs={filteredWellness} onSaved={loadData} />}
-        {tab === 'meetday' && <AthleteMeetDayTab />}
+        {tab === 'meetday' && (
+          <div className="space-y-6">
+            <AthleteUpcomingMeetsCard athleteId={profile.id} coachId={profile.coach_id} />
+            <AthleteMeetDayTab />
+          </div>
+        )}
       </main>
 
       {editingProfile && (
