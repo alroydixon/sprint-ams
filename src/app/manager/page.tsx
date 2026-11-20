@@ -6,7 +6,26 @@ import { useRouter } from 'next/navigation';
 import { DISCIPLINE_OPTIONS, CoachingDiscipline } from '@/lib/disciplines';
 import ManagerAccessDrawer from '@/components/ManagerAccessDrawer';
 import ManagerDisciplineOverview from '@/components/ManagerDisciplineOverview';
-import { Shield, UserPlus, Check, KeyRound, LogOut } from 'lucide-react';
+import { Shield, UserPlus, Check, KeyRound, LogOut, Calendar } from 'lucide-react';
+
+async function fetchAllProgramRows(table: 'race_results' | 'wellness_logs', ids: string[], orderCol: string, asc: boolean) {
+  const all: any[] = [];
+  let from = 0;
+  const pageSize = 1000;
+  while (true) {
+    const { data, error } = await supabase
+      .from(table)
+      .select('*')
+      .in('athlete_id', ids)
+      .order(orderCol, { ascending: asc })
+      .range(from, from + pageSize - 1);
+    if (error || !data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
+}
 
 export default function ProgramManagerDashboard() {
   const router = useRouter();
@@ -19,6 +38,8 @@ export default function ProgramManagerDashboard() {
   const [selectedDiscipline, setSelectedDiscipline] = useState<CoachingDiscipline>('sprints');
   const [showAccessControl, setShowAccessControl] = useState(false);
   const [copiedInvite, setCopiedInvite] = useState(false);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   useEffect(() => {
     loadProgramData();
@@ -57,14 +78,27 @@ export default function ProgramManagerDashboard() {
       const athIds = programAthletes.map((a) => a.id);
 
       if (athIds.length > 0) {
-        const [rRes, wRes] = await Promise.all([
-          supabase.from('race_results').select('*').in('athlete_id', athIds).order('race_date', { ascending: true }).limit(5000),
-          supabase.from('wellness_logs').select('*').in('athlete_id', athIds).order('log_date', { ascending: false }).limit(5000),
+        const [allRaces, allWellness] = await Promise.all([
+          fetchAllProgramRows('race_results', athIds, 'race_date', true),
+          fetchAllProgramRows('wellness_logs', athIds, 'log_date', false),
         ]);
-        if (rRes.data) setRaces(rRes.data);
-        if (wRes.data) setWellness(wRes.data);
+        setRaces(allRaces);
+        setWellness(allWellness);
       }
     }
+  }
+
+  function applyQuickRange(days: number | null) {
+    if (!days) {
+      setDateFrom('');
+      setDateTo('');
+      return;
+    }
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - days);
+    setDateFrom(start.toISOString().slice(0, 10));
+    setDateTo(end.toISOString().slice(0, 10));
   }
 
   function copyCoachInvite() {
@@ -75,6 +109,8 @@ export default function ProgramManagerDashboard() {
     setCopiedInvite(true);
     setTimeout(() => setCopiedInvite(false), 2500);
   }
+
+  const inRange = (d: string) => (!dateFrom || d >= dateFrom) && (!dateTo || d <= dateTo);
 
   const disciplineCoaches = useMemo(
     () => coaches.filter((c) => !c.is_suspended && (c.coaching_discipline || 'sprints') === selectedDiscipline),
@@ -88,13 +124,13 @@ export default function ProgramManagerDashboard() {
 
   const disciplineRaces = useMemo(() => {
     const aIds = new Set(disciplineAthletes.map((a) => a.id));
-    return races.filter((r) => aIds.has(r.athlete_id));
-  }, [races, disciplineAthletes]);
+    return races.filter((r) => aIds.has(r.athlete_id) && inRange(r.race_date));
+  }, [races, disciplineAthletes, dateFrom, dateTo]);
 
   const disciplineWellness = useMemo(() => {
     const aIds = new Set(disciplineAthletes.map((a) => a.id));
-    return wellness.filter((w) => aIds.has(w.athlete_id));
-  }, [wellness, disciplineAthletes]);
+    return wellness.filter((w) => aIds.has(w.athlete_id) && inRange(w.log_date));
+  }, [wellness, disciplineAthletes, dateFrom, dateTo]);
 
   if (!manager) return <div className="min-h-screen bg-slate-950 text-white p-8">Loading Program Manager Hub...</div>;
 
@@ -138,6 +174,19 @@ export default function ProgramManagerDashboard() {
           />
         )}
 
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+            <Calendar className="w-4 h-4 text-amber-400" />
+            <button type="button" onClick={() => applyQuickRange(7)} className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-white">Last 7 Days</button>
+            <button type="button" onClick={() => applyQuickRange(14)} className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-white">Last 14 Days</button>
+            <button type="button" onClick={() => applyQuickRange(null)} className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-amber-300">All Dates</button>
+            <span className="ml-1">Custom:</span>
+            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-white" />
+            <span>to</span>
+            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-white" />
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-900 p-1.5 rounded-xl border border-slate-800">
           {DISCIPLINE_OPTIONS.map((opt) => {
             const count = coaches.filter((c) => !c.is_suspended && (c.coaching_discipline || 'sprints') === opt.id).length;
@@ -165,6 +214,8 @@ export default function ProgramManagerDashboard() {
           athletes={disciplineAthletes}
           races={disciplineRaces}
           wellness={disciplineWellness}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
         />
       </main>
     </div>

@@ -14,13 +14,18 @@ export default function ManagerDisciplineOverview({
   athletes,
   races,
   wellness,
+  dateFrom = '',
+  dateTo = '',
 }: {
   discipline: string;
   coaches: any[];
   athletes: any[];
   races: any[];
   wellness: any[];
+  dateFrom?: string;
+  dateTo?: string;
 }) {
+
   const [subTab, setSubTab] = useState<'athletes' | 'ape' | 'records'>('athletes');
   const [inspectAthlete, setInspectAthlete] = useState<any>(null);
 
@@ -146,7 +151,7 @@ export default function ManagerDisciplineOverview({
         </div>
       )}
 
-      {subTab === 'ape' && <CoachApeScoreTab athletes={activeAthletes} races={races} discipline={discipline} dateFrom="" dateTo="" />}
+      {subTab === 'ape' && <CoachApeScoreTab athletes={activeAthletes} races={races} discipline={discipline} dateFrom={dateFrom} dateTo={dateTo} />}
       {subTab === 'records' && <CoachRecordsTab athletes={athletes} races={races} discipline={discipline} />}
 
       {inspectAthlete && (
