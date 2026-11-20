@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AuthSignupFields from '@/components/AuthSignupFields';
+import { CoachingDiscipline } from '@/lib/disciplines';
 import { Activity } from 'lucide-react';
 
 function AuthForm() {
@@ -11,6 +12,7 @@ function AuthForm() {
   const searchParams = useSearchParams();
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [role, setRole] = useState<'athlete' | 'coach' | 'medical'>('athlete');
+  const [discipline, setDiscipline] = useState<CoachingDiscipline>('sprints');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -53,6 +55,7 @@ function AuthForm() {
       } else {
         const cleanCoachId = coachId.trim();
         const isJoiningExistingSquad = Boolean(cleanCoachId);
+        let resolvedDiscipline: CoachingDiscipline = discipline;
 
         if (isJoiningExistingSquad) {
           const isStaff = role === 'coach' || role === 'medical';
@@ -68,6 +71,16 @@ function AuthForm() {
                 : 'Invalid Squad Access Code. Ask your Coach for the Squad Invite Code.'
             );
           }
+
+          // Inherit Head Coach's coaching_discipline automatically
+          const { data: headCoachProf } = await supabase
+            .from('profiles')
+            .select('coaching_discipline')
+            .eq('id', cleanCoachId)
+            .maybeSingle();
+          if (headCoachProf?.coaching_discipline) {
+            resolvedDiscipline = headCoachProf.coaching_discipline as CoachingDiscipline;
+          }
         }
 
         const { data, error } = await supabase.auth.signUp({ email, password });
@@ -77,6 +90,7 @@ function AuthForm() {
         const { error: profErr } = await supabase.from('profiles').insert({
           id: data.user.id,
           role,
+          coaching_discipline: resolvedDiscipline,
           full_name: fullName.trim(),
           email: email.trim(),
           coach_id: role === 'coach' ? null : cleanCoachId || null,
@@ -112,8 +126,8 @@ function AuthForm() {
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400">
             <Activity className="w-6 h-6" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">FAST Sprint App</h1>
-          <p className="text-xs text-slate-400">High-Performance Biomechanics, Power, Wellness &amp; Medical Hub</p>
+          <h1 className="text-2xl font-bold tracking-tight">FAST Athletics AMS</h1>
+          <p className="text-xs text-slate-400">Sprints, Distance, Jumps &amp; Throws Performance, Wellness &amp; Medical Hub</p>
         </div>
 
         <div className="grid grid-cols-2 bg-slate-800 p-1 rounded-lg text-sm font-medium">
@@ -129,6 +143,7 @@ function AuthForm() {
           {mode === 'signup' && (
             <AuthSignupFields
               role={role} setRole={setRole}
+              discipline={discipline} setDiscipline={setDiscipline}
               fullName={fullName} setFullName={setFullName}
               grade={grade} setGrade={setGrade}
               age={age} setAge={setAge}

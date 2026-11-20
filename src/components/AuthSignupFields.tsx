@@ -1,10 +1,13 @@
 'use client';
 
+import { CoachingDiscipline, DISCIPLINE_OPTIONS } from '@/lib/disciplines';
 import { ShieldCheck } from 'lucide-react';
 
 export default function AuthSignupFields({
   role,
   setRole,
+  discipline,
+  setDiscipline,
   fullName,
   setFullName,
   grade,
@@ -22,6 +25,8 @@ export default function AuthSignupFields({
 }: {
   role: 'athlete' | 'coach' | 'medical';
   setRole: (r: 'athlete' | 'coach' | 'medical') => void;
+  discipline: CoachingDiscipline;
+  setDiscipline: (d: CoachingDiscipline) => void;
   fullName: string;
   setFullName: (v: string) => void;
   grade: string;
@@ -53,6 +58,29 @@ export default function AuthSignupFields({
           </button>
         </div>
       </div>
+
+      {role === 'coach' && coachId.trim() === '' && (
+        <div>
+          <label className="block text-xs text-emerald-400 font-semibold mb-1.5">Primary Coaching Discipline</label>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            {DISCIPLINE_OPTIONS.map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setDiscipline(opt.id)}
+                className={`p-2 rounded-lg border text-left transition ${
+                  discipline === opt.id
+                    ? 'border-emerald-500 bg-emerald-500/15 text-white'
+                    : 'border-slate-700 bg-slate-800/60 text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <span className="font-bold block text-emerald-300">{opt.label}</span>
+                <span className="text-[10px] leading-tight block mt-0.5 text-slate-400">{opt.description}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div>
         <label className="block text-xs text-slate-400 mb-1">Full Name</label>
