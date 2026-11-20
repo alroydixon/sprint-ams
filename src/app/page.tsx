@@ -1,232 +1,169 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import AuthSignupFields from '@/components/AuthSignupFields';
+import { Activity } from 'lucide-react';
 
-export default function AuthPage() {
+function AuthForm() {
   const router = useRouter();
-  const [isSignUp, setIsSignUp] = useState(false);
+  const searchParams = useSearchParams();
+  const [mode, setMode] = useState<'login' | 'signup'>('login');
+  const [role, setRole] = useState<'athlete' | 'coach' | 'medical'>('athlete');
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [role, setRole] = useState<'athlete' | 'coach' | 'medical'>('athlete');
-  const [specialty, setSpecialty] = useState('Physiotherapist');
-  const [grade, setGrade] = useState('Grade 10');
-  const [age, setAge] = useState('16');
-  const [gender, setGender] = useState('Boy');
   const [coachId, setCoachId] = useState('');
-  const [coaches, setCoaches] = useState<{ id: string; full_name: string }[]>([]);
+  const [inviteCode, setInviteCode] = useState('');
+  const [specialty, setSpecialty] = useState('Sports Physician');
+  const [grade, setGrade] = useState('Grade 11');
+  const [age, setAge] = useState('17');
+  const [gender, setGender] = useState('Boy');
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const invitedName = params.get('invite');
-    const invitedCoach = params.get('coach');
-    const invitedRole = params.get('role');
-
-    if (invitedName || invitedCoach || invitedRole) {
-      setIsSignUp(true);
-      if (invitedRole === 'medical') setRole('medical');
-      else setRole('athlete');
-      if (invitedName) setFullName(invitedName);
+    const qRole = searchParams.get('role');
+    const qCoach = searchParams.get('coach');
+    if (qRole === 'athlete' || qRole === 'medical' || qRole === 'coach') {
+      setRole(qRole);
+      setMode('signup');
     }
-
-    supabase
-      .from('profiles')
-      .select('id, full_name')
-      .eq('role', 'coach')
-      .then(({ data }) => {
-        if (data) {
-          setCoaches(data);
-          if (invitedCoach) setCoachId(invitedCoach);
-          else if (data.length > 0) setCoachId(data.at(0)!.id);
-        }
-      });
-  }, []);
-
-  function routeForRole(userRole?: string) {
-    if (userRole === 'coach') return '/coach';
-    if (userRole === 'medical') return '/medical';
-    return '/athlete';
-  }
+    if (qCoach) {
+      setCoachId(qCoach);
+      setMode('signup');
+    }
+  }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    setMessage('');
+    setErrorMsg('');
 
-    if (isSignUp) {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-            role,
-            specialty: role === 'medical' ? specialty : null,
-            phone,
-            grade,
-            age,
-            gender,
-          },
-        },
-      });
+    try {
+      if (mode === 'login') {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
 
-      if (error) {
-        setMessage(error.message);
-        setLoading(false);
-        return;
-      }
-
-      if (data.user && (role === 'athlete' || role === 'medical') && coachId) {
-        await supabase.from('profiles').update({ coach_id: coachId }).eq('id', data.user.id);
-      }
-
-      if (data.session) {
-        router.push(routeForRole(role));
+        const { data: prof } = await supabase.from('profiles').select('role').eq('id', data.user.id).single();
+        if (prof?.role === 'coach') router.push('/coach');
+        else if (prof?.role === 'medical') router.push('/medical');
+        else router.push('/athlete');
       } else {
-        setMessage('Account created! Check your email to confirm, then sign in.');
-      }
-    } else {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) {
-        setMessage(error.message);
-        setLoading(false);
-        return;
-      }
+        const cleanCoachId = coachId.trim();
+        const isJoiningExistingSquad = Boolean(cleanCoachId);
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', data.user.id)
-        .single();
+        if (isJoiningExistingSquad) {
+          const isStaff = role === 'coach' || role === 'medical';
+          const { data: isValid, error: codeErr } = await supabase.rpc('verify_squad_invite_code', {
+            p_coach_id: cleanCoachId,
+            p_code: inviteCode.trim(),
+            p_is_staff: isStaff,
+          });
+          if (codeErr || !isValid) {
+            throw new Error(
+              isStaff
+                ? 'Invalid Staff Access Code. Ask the Head Coach for the Staff Invite Code.'
+                : 'Invalid Squad Access Code. Ask your Coach for the Squad Invite Code.'
+            );
+          }
+        }
 
-      router.push(routeForRole(profile?.role));
+        const { data, error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        if (!data.user) throw new Error('Signup failed. Please try again.');
+
+        const { error: profErr } = await supabase.from('profiles').insert({
+          id: data.user.id,
+          role,
+          full_name: fullName.trim(),
+          email: email.trim(),
+          coach_id: role === 'coach' ? null : cleanCoachId || null,
+          specialty: role === 'medical' ? specialty : null,
+          grade: role === 'athlete' ? grade : null,
+          age: role === 'athlete' ? parseInt(age) || null : null,
+          gender: role === 'athlete' ? gender : null,
+        });
+        if (profErr) throw profErr;
+
+        if (role === 'coach' && isJoiningExistingSquad) {
+          await supabase.from('squad_coaches').insert({
+            head_coach_id: cleanCoachId,
+            assistant_coach_id: data.user.id,
+          });
+        }
+
+        if (role === 'coach') router.push('/coach');
+        else if (role === 'medical') router.push('/medical');
+        else router.push('/athlete');
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Authentication error');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
-        <h1 className="text-2xl font-bold text-center text-emerald-400">Sprint AMS</h1>
-        <p className="text-sm text-slate-400 text-center mt-1">
-          {isSignUp ? 'Create your Athlete, Coach, or Medical Staff account' : 'Sign in to your performance portal'}
-        </p>
+    <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6">
+        <div className="text-center space-y-2">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400">
+            <Activity className="w-6 h-6" />
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight">FAST Sprint App</h1>
+          <p className="text-xs text-slate-400">High-Performance Biomechanics, Power, Wellness &amp; Medical Hub</p>
+        </div>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          {isSignUp && (
-            <>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">I am signing up as</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { id: 'athlete', label: 'Athlete' },
-                    { id: 'coach', label: 'Coach' },
-                    { id: 'medical', label: 'Medical Staff' },
-                  ].map((r) => (
-                    <button
-                      type="button"
-                      key={r.id}
-                      onClick={() => setRole(r.id as any)}
-                      className={`py-2 rounded-lg text-xs font-semibold border ${
-                        role === r.id
-                          ? 'bg-emerald-500 text-slate-950 border-emerald-400'
-                          : 'bg-slate-800 text-slate-300 border-slate-700'
-                      }`}
-                    >
-                      {r.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+        <div className="grid grid-cols-2 bg-slate-800 p-1 rounded-lg text-sm font-medium">
+          <button type="button" onClick={() => setMode('login')} className={`py-2 rounded-md transition ${mode === 'login' ? 'bg-emerald-500 text-slate-950 font-semibold' : 'text-slate-300'}`}>
+            Sign In
+          </button>
+          <button type="button" onClick={() => setMode('signup')} className={`py-2 rounded-md transition ${mode === 'signup' ? 'bg-emerald-500 text-slate-950 font-semibold' : 'text-slate-300'}`}>
+            Create Account
+          </button>
+        </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs text-slate-400 mb-1">Full Name</label>
-                  <input required type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="e.g. Dr. Sarah Smit" className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm" />
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-400 mb-1">Contact Number</label>
-                  <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="082 123 4567" className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm" />
-                </div>
-              </div>
-
-              {role === 'medical' && (
-                <div>
-                  <label className="block text-xs text-slate-400 mb-1">Medical Specialty</label>
-                  <select value={specialty} onChange={(e) => setSpecialty(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm">
-  <option>Sports Physician</option>
-  <option>Physiotherapist</option>
-  <option>Biokineticist</option>
-  <option>Massage Therapist</option>
-  <option>Biomechanist</option>
-  <option>Chiropractor</option>
-</select>
-                </div>
-              )}
-
-              {role === 'athlete' && (
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1">Grade</label>
-                    <select value={grade} onChange={(e) => setGrade(e.target.value)} className="w-full px-2 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm">
-                      <option>Grade 8</option>
-                      <option>Grade 9</option>
-                      <option>Grade 10</option>
-                      <option>Grade 11</option>
-                      <option>Grade 12</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1">Age</label>
-                    <input type="number" value={age} onChange={(e) => setAge(e.target.value)} className="w-full px-2 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm" />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1">Gender</label>
-                    <select value={gender} onChange={(e) => setGender(e.target.value)} className="w-full px-2 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm">
-                      <option>Boy</option>
-                      <option>Girl</option>
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              {(role === 'athlete' || role === 'medical') && coaches.length > 0 && (
-                <div>
-                  <label className="block text-xs text-slate-400 mb-1">Assigned Squad Coach</label>
-                  <select value={coachId} onChange={(e) => setCoachId(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm">
-                    {coaches.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
-                  </select>
-                </div>
-              )}
-            </>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {mode === 'signup' && (
+            <AuthSignupFields
+              role={role} setRole={setRole}
+              fullName={fullName} setFullName={setFullName}
+              grade={grade} setGrade={setGrade}
+              age={age} setAge={setAge}
+              gender={gender} setGender={setGender}
+              specialty={specialty} setSpecialty={setSpecialty}
+              coachId={coachId} setCoachId={setCoachId}
+              inviteCode={inviteCode} setInviteCode={setInviteCode}
+            />
           )}
 
           <div>
-            <label className="block text-xs text-slate-400 mb-1">Email</label>
-            <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@school.co.za" className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm" />
+            <label className="block text-xs text-slate-400 mb-1">Email Address</label>
+            <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="athlete@school.co.za" className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm" />
           </div>
 
           <div>
             <label className="block text-xs text-slate-400 mb-1">Password</label>
-            <input required type="password" minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm" />
+            <input required type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm" />
           </div>
 
-          {message && <p className="text-xs text-amber-400 bg-amber-950/50 border border-amber-800 p-2.5 rounded-lg">{message}</p>}
+          {errorMsg && <p className="text-xs text-rose-400 bg-rose-950/50 border border-rose-800 p-2 rounded">{errorMsg}</p>}
 
           <button disabled={loading} type="submit" className="w-full py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-sm transition">
-            {loading ? 'Please wait...' : isSignUp ? 'Create Account' : 'Sign In'}
+            {loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : 'Create Account'}
           </button>
         </form>
-
-        <button type="button" onClick={() => { setIsSignUp(!isSignUp); setMessage(''); }} className="w-full mt-4 text-xs text-slate-400 hover:text-emerald-400 text-center">
-          {isSignUp ? 'Already have an account? Sign In' : 'Need an account? Sign Up'}
-        </button>
       </div>
-    </main>
+    </div>
+  );
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-950 text-white p-8">Loading...</div>}>
+      <AuthForm />
+    </Suspense>
   );
 }

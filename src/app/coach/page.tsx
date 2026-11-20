@@ -39,6 +39,8 @@ async function fetchAllRaces(ids: string[]) {
 export default function CoachDashboard() {
   const router = useRouter();
   const [coach, setCoach] = useState<any>(null);
+  const [effectiveCoachId, setEffectiveCoachId] = useState<string>('');
+  const [isAssistant, setIsAssistant] = useState<boolean>(false);
   const [editingProfile, setEditingProfile] = useState(false);
   const [showDigest, setShowDigest] = useState(false);
   const [tab, setTab] = useState<CoachTab>('squad');
@@ -67,9 +69,19 @@ export default function CoachDashboard() {
     if (prof.role !== 'coach') return router.push('/athlete');
     setCoach({ ...prof, email: prof.email || user.email });
 
+    const { data: linkRow } = await supabase
+      .from('squad_coaches')
+      .select('head_coach_id')
+      .eq('assistant_coach_id', user.id)
+      .maybeSingle();
+
+    const targetCoachId = linkRow?.head_coach_id || user.id;
+    setEffectiveCoachId(targetCoachId);
+    setIsAssistant(Boolean(linkRow?.head_coach_id));
+
     const [{ data: squad }, { data: blockRows }] = await Promise.all([
-      supabase.from('profiles').select('*').eq('coach_id', user.id).eq('role', 'athlete').order('full_name', { ascending: true }),
-      supabase.from('training_blocks').select('*').eq('coach_id', user.id).order('start_date', { ascending: true }),
+      supabase.from('profiles').select('*').eq('coach_id', targetCoachId).eq('role', 'athlete').order('full_name', { ascending: true }),
+      supabase.from('training_blocks').select('*').eq('coach_id', targetCoachId).order('start_date', { ascending: true }),
     ]);
 
     if (blockRows) setBlocks(blockRows);
@@ -126,6 +138,8 @@ export default function CoachDashboard() {
     <div className="min-h-screen bg-slate-950 text-white pb-12">
       <CoachHeader
         coach={coach}
+        effectiveCoachId={effectiveCoachId}
+        isAssistant={isAssistant}
         activeCount={activeAthletes.length}
         onDigestClick={() => setShowDigest(true)}
         onEditClick={() => setEditingProfile(true)}
@@ -149,14 +163,14 @@ export default function CoachDashboard() {
         <CoachNavBar tab={tab} onChange={setTab} />
 
         {tab === 'squad' && (
-          <CoachSquadTab coachId={coach.id} athletes={athletes} races={filteredRaces} sessions={filteredSessions} tests={filteredTests} wellness={filteredWellness} onSquadUpdated={loadSquadData} />
+          <CoachSquadTab coachId={effectiveCoachId} athletes={athletes} races={filteredRaces} sessions={filteredSessions} tests={filteredTests} wellness={filteredWellness} onSquadUpdated={loadSquadData} />
         )}
         {tab === 'wellness' && <CoachWellnessTab athletes={activeAthletes} wellness={filteredWellness} />}
         {tab === 'medical' && (
-          <MedicalHubTab coachId={coach.id} reporterName={`Coach ${coach.full_name}`} isCoach={true} athletes={activeAthletes} medical={medical} onSaved={loadSquadData} />
+          <MedicalHubTab coachId={effectiveCoachId} reporterName={`Coach ${coach.full_name}`} isCoach={true} athletes={activeAthletes} medical={medical} onSaved={loadSquadData} />
         )}
         {tab === 'season' && (
-          <CoachPeriodizationTab coachId={coach.id} blocks={blocks} sessions={sessions} activeAthleteCount={activeAthletes.length} onSaved={loadSquadData} />
+          <CoachPeriodizationTab coachId={effectiveCoachId} blocks={blocks} sessions={sessions} activeAthleteCount={activeAthletes.length} onSaved={loadSquadData} />
         )}
         {tab === 'records' && <CoachRecordsTab athletes={athletes} races={races} />}
         {tab === 'ape' && <CoachApeScoreTab athletes={activeAthletes} races={filteredRaces} dateFrom={dateFrom} dateTo={dateTo} />}
