@@ -4,8 +4,14 @@ import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { getReadinessStatus } from '@/lib/biomechanics';
 
+function getLocalTodayIso(): string {
+  const now = new Date();
+  const offsetMs = now.getTimezoneOffset() * 60000;
+  return new Date(now.getTime() - offsetMs).toISOString().slice(0, 10);
+}
+
 export default function AthleteWellnessTab({ athleteId, logs, onSaved }: { athleteId: string; logs: any[]; onSaved: () => void }) {
-  const [logDate, setLogDate] = useState(new Date().toISOString().slice(0, 10));
+  const [logDate, setLogDate] = useState(getLocalTodayIso());
   const [sleep, setSleep] = useState(8);
   const [fatigue, setFatigue] = useState(8);
   const [soreness, setSoreness] = useState(8);
@@ -13,6 +19,7 @@ export default function AthleteWellnessTab({ athleteId, logs, onSaved }: { athle
   const [mood, setMood] = useState(8);
   const [painLoc, setPainLoc] = useState('');
   const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
   const composite = sleep + fatigue + soreness + stress + mood;
   const status = getReadinessStatus(composite);
@@ -20,8 +27,9 @@ export default function AthleteWellnessTab({ athleteId, logs, onSaved }: { athle
   async function saveWellness(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
+    setFeedback(null);
 
-    await supabase.from('wellness_logs').upsert(
+    const { error } = await supabase.from('wellness_logs').upsert(
       {
         athlete_id: athleteId,
         log_date: logDate,
@@ -29,13 +37,19 @@ export default function AthleteWellnessTab({ athleteId, logs, onSaved }: { athle
         fatigue_level: fatigue,
         muscle_soreness: soreness,
         stress_level: stress,
-        mood_score: mood,
+        mood: mood,
         pain_location: painLoc.trim() || null,
       },
       { onConflict: 'athlete_id,log_date' }
     );
 
     setSaving(false);
+    if (error) {
+      setFeedback({ type: 'err', text: `Could not save check-in: ${error.message}` });
+      return;
+    }
+
+    setFeedback({ type: 'ok', text: `✓ Morning Check-In Saved for ${logDate} (${composite}/50)!` });
     onSaved();
   }
 
@@ -75,6 +89,12 @@ export default function AthleteWellnessTab({ athleteId, logs, onSaved }: { athle
             </div>
           ))}
         </div>
+
+        {feedback && (
+          <p className={`p-2 rounded border font-semibold ${feedback.type === 'ok' ? 'bg-emerald-950/60 border-emerald-700 text-emerald-300' : 'bg-rose-950/60 border-rose-700 text-rose-300'}`}>
+            {feedback.text}
+          </p>
+        )}
 
         <button disabled={saving} type="submit" className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold px-4 py-2 rounded-lg">
           {saving ? 'Submitting...' : 'Submit Morning Check-In'}
