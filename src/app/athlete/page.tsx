@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import AthleteHeader from '@/components/AthleteHeader';
 import AthleteRehabBanner from '@/components/AthleteRehabBanner';
+import AthleteWellnessReminderBanner from '@/components/AthleteWellnessReminderBanner';
 import AthleteDateAndTabsBar, { AthleteTab } from '@/components/AthleteDateAndTabsBar';
 import AthleteRacesTab from '@/components/AthleteRacesTab';
 import AthleteTrainingTab from '@/components/AthleteTrainingTab';
@@ -122,6 +123,7 @@ export default function AthleteDashboard() {
 
       <main className="max-w-5xl mx-auto px-4 mt-6 space-y-6">
         <AthleteRehabBanner activeCases={activeMedical} />
+<AthleteWellnessReminderBanner wellnessLogs={wellness} onLogClick={() => setTab('wellness')} />
 
         <AthleteDateAndTabsBar
           activeBlock={activeBlock}
