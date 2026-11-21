@@ -2,7 +2,7 @@
 
 import { calculatePower, getReadinessStatus } from '@/lib/biomechanics';
 import { getPrimaryHeadlineEvents, formatMark, isBetterMark } from '@/lib/disciplines';
-import { Link2, EyeOff, Eye } from 'lucide-react';
+import { Link2, EyeOff, Eye, IdCard } from 'lucide-react';
 
 export default function SquadRosterTable({
   athletes,
@@ -14,6 +14,7 @@ export default function SquadRosterTable({
   showHidden,
   copiedId,
   onSelectAthlete,
+  onOpenPassport,
   onCopyInvite,
   onToggleArchive,
 }: {
@@ -26,6 +27,7 @@ export default function SquadRosterTable({
   showHidden: boolean;
   copiedId: string | null;
   onSelectAthlete: (a: any) => void;
+  onOpenPassport: (a: any, e: React.MouseEvent) => void;
   onCopyInvite: (a: any, e: React.MouseEvent) => void;
   onToggleArchive: (a: any, e: React.MouseEvent) => void;
 }) {
@@ -95,6 +97,13 @@ export default function SquadRosterTable({
                 <td className="text-amber-400 font-semibold">{vol}m</td>
                 <td className="px-4 text-right" onClick={(e) => e.stopPropagation()}>
                   <div className="inline-flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={(e) => onOpenPassport(a, e)}
+                      className="flex items-center gap-1 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 px-2 py-1 rounded text-[11px] font-semibold"
+                    >
+                      <IdCard className="w-3 h-3" /> Passport
+                    </button>
                     {!a.email ? (
                       <button
                         type="button"
@@ -110,7 +119,7 @@ export default function SquadRosterTable({
                     )}
                     <button
                       type="button"
-                      onClick={(e) => onToggleArchive(a, e)}
+                      onClick={(e) => toggleArchive(a, e)}
                       className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded text-[11px]"
                     >
                       {showHidden ? <><Eye className="w-3 h-3" /> Unhide</> : <><EyeOff className="w-3 h-3" /> Hide</>}

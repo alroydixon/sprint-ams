@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import SquadRosterTable from './SquadRosterTable';
 import CoachAthleteModal from './CoachAthleteModal';
+import AthletePassportModal from './AthletePassportModal';
 import { UserPlus, Search } from 'lucide-react';
 
 export default function CoachSquadTab({
@@ -26,6 +27,7 @@ export default function CoachSquadTab({
   onSquadUpdated: () => void;
 }) {
   const [selectedAthlete, setSelectedAthlete] = useState<any>(null);
+  const [passportAthlete, setPassportAthlete] = useState<any>(null);
   const [search, setSearch] = useState('');
   const [showHidden, setShowHidden] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -136,6 +138,7 @@ export default function CoachSquadTab({
         showHidden={showHidden}
         copiedId={copiedId}
         onSelectAthlete={setSelectedAthlete}
+        onOpenPassport={(a, e) => { e.stopPropagation(); setPassportAthlete(a); }}
         onCopyInvite={copyAthleteInvite}
         onToggleArchive={toggleArchive}
       />
@@ -149,6 +152,18 @@ export default function CoachSquadTab({
           wellness={wellness.filter((w) => w.athlete_id === selectedAthlete.id)}
           onAthleteUpdated={() => onSquadUpdated()}
           onClose={() => setSelectedAthlete(null)}
+        />
+      )}
+
+      {passportAthlete && (
+        <AthletePassportModal
+          athlete={passportAthlete}
+          discipline={discipline}
+          races={races.filter((r) => r.athlete_id === passportAthlete.id)}
+          tests={tests.filter((t) => t.athlete_id === passportAthlete.id)}
+          sessions={sessions.filter((s) => s.athlete_id === passportAthlete.id)}
+          wellness={wellness.filter((w) => w.athlete_id === passportAthlete.id)}
+          onClose={() => setPassportAthlete(null)}
         />
       )}
     </div>
