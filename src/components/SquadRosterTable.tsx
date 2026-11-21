@@ -119,7 +119,7 @@ export default function SquadRosterTable({
                     )}
                     <button
                       type="button"
-                      onClick={(e) => toggleArchive(a, e)}
+                      onClick={(e) => onToggleArchive(a, e)}
                       className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded text-[11px]"
                     >
                       {showHidden ? <><Eye className="w-3 h-3" /> Unhide</> : <><EyeOff className="w-3 h-3" /> Hide</>}
