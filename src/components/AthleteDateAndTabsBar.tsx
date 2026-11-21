@@ -62,7 +62,7 @@ export default function AthleteDateAndTabsBar({
           <Dumbbell className="w-4 h-4" /> Training &amp; Tests
         </button>
         <button onClick={() => setTab('wellness')} className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-semibold ${tab === 'wellness' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}>
-          <HeartPulse className="w-4 h-4" /> Daily Wellness &amp; RPE
+          <HeartPulse className="w-4 h-4" /> Daily Wellness
         </button>
         <button onClick={() => setTab('meetday')} className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-semibold ${tab === 'meetday' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}>
           <Timer className="w-4 h-4" /> Meet Day

@@ -46,13 +46,22 @@ export default function AthleteSessionHistory({
       <div className="space-y-3">
         {sessions.slice().reverse().map((s) => {
           const vol = (s.training_runs || []).reduce((a: number, r: any) => a + Number(r.distance_m), 0);
+          const load = s.session_rpe && s.duration_mins ? Number(s.session_rpe) * Number(s.duration_mins) : null;
+
           return (
             <div key={s.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 text-xs space-y-2">
-              <div className="flex justify-between font-bold">
+              <div className="flex flex-wrap justify-between items-center gap-2 font-bold">
                 <span className="text-emerald-400">{s.session_date} {s.notes ? `• ${s.notes}` : ''}</span>
-                <span className="text-slate-300">
-                  {isField ? `Total Attempts: ${vol}` : `Total Volume: ${vol}m`}
-                </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {s.session_rpe && (
+                    <span className="px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/40 text-amber-300 font-semibold">
+                      RPE {s.session_rpe}/10{s.duration_mins ? ` • ${s.duration_mins}m` : ''}{load ? ` (${load} AU)` : ''}
+                    </span>
+                  )}
+                  <span className="text-slate-300">
+                    {isField ? `Attempts: ${vol}` : `Volume: ${vol}m`}
+                  </span>
+                </div>
               </div>
               <div className="flex flex-wrap gap-2">
                 {(s.training_runs || []).map((r: any) => (

@@ -38,6 +38,8 @@ export default function AthleteTrainingTab({
 
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState('');
+  const [sessionRpe, setSessionRpe] = useState(7);
+  const [durationMins, setDurationMins] = useState(60);
   const [runs, setRuns] = useState<any[]>([makeDefaultRun()]);
   const [saving, setSaving] = useState(false);
 
@@ -62,7 +64,13 @@ export default function AthleteTrainingTab({
 
     const { data: sess } = await supabase
       .from('training_sessions')
-      .insert({ athlete_id: athleteId, session_date: sessionDate, notes: notes.trim() || null })
+      .insert({
+        athlete_id: athleteId,
+        session_date: sessionDate,
+        notes: notes.trim() || null,
+        session_rpe: sessionRpe,
+        duration_mins: durationMins,
+      })
       .select()
       .single();
 
@@ -86,6 +94,8 @@ export default function AthleteTrainingTab({
     }
 
     setNotes('');
+    setSessionRpe(7);
+    setDurationMins(60);
     setRuns([makeDefaultRun()]);
     setSaving(false);
     onSaved();
@@ -101,6 +111,7 @@ export default function AthleteTrainingTab({
             ? 'Log Distance Interval / Tempo Session'
             : 'Log Track Training Session'}
         </h3>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <input required type="date" value={sessionDate} onChange={(e) => setSessionDate(e.target.value)} className="bg-slate-800 border border-slate-700 rounded-lg p-2" />
           <input
@@ -118,6 +129,38 @@ export default function AthleteTrainingTab({
             onChange={(e) => setNotes(e.target.value)}
             className="bg-slate-800 border border-slate-700 rounded-lg p-2"
           />
+        </div>
+
+        {/* Session RPE & Duration Row */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-950/70 border border-slate-800 rounded-lg p-2.5 items-center">
+          <div>
+            <label className="block text-[11px] text-slate-400 mb-1">
+              Session RPE (1–10): <strong className="text-amber-300">{sessionRpe}/10</strong>
+            </label>
+            <input
+              type="range"
+              min={1}
+              max={10}
+              value={sessionRpe}
+              onChange={(e) => setSessionRpe(Number(e.target.value))}
+              className="w-full accent-amber-400"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] text-slate-400 mb-1">Duration (mins)</label>
+            <input
+              type="number"
+              min={5}
+              max={300}
+              value={durationMins}
+              onChange={(e) => setDurationMins(Number(e.target.value))}
+              className="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-white"
+            />
+          </div>
+          <div className="text-center sm:text-right">
+            <span className="text-[11px] text-slate-400 block">Calculated Session Load</span>
+            <strong className="text-sm font-mono text-emerald-400">{sessionRpe * durationMins} AU</strong>
+          </div>
         </div>
 
         <div className="space-y-2">
