@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { getDisciplineMeta } from '@/lib/disciplines';
+import { DISCIPLINE_OPTIONS } from '@/lib/disciplines';
 import ProfileSettingsModal from './ProfileSettingsModal';
 import SuperAdminKeysModal from './SuperAdminKeysModal';
 import {
@@ -35,7 +35,8 @@ export default function CoachHeader({
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showSuperAdmin, setShowSuperAdmin] = useState(false);
 
-  const disciplineMeta = getDisciplineMeta(coach.coaching_discipline);
+  const disciplineMeta =
+    DISCIPLINE_OPTIONS.find((d) => d.id === coach.coaching_discipline) || DISCIPLINE_OPTIONS[0];
   const isSuperAdmin = coach.email?.toLowerCase() === 'alroydixon57@gmail.com';
 
   function copyInviteLink(targetRole: 'athlete' | 'coach') {
