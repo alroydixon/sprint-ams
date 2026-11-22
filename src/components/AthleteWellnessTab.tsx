@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { getReadinessStatus } from '@/lib/biomechanics';
+import AnatomicalBodySelector from './AnatomicalBodySelector';
 
 function getLocalTodayIso(): string {
   const now = new Date();
@@ -17,17 +18,26 @@ export default function AthleteWellnessTab({ athleteId, logs, onSaved }: { athle
   const [soreness, setSoreness] = useState(8);
   const [stress, setStress] = useState(8);
   const [mood, setMood] = useState(8);
-  const [painLoc, setPainLoc] = useState('');
+  const [selectedZones, setSelectedZones] = useState<string[]>([]);
+  const [painNote, setPainNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
   const composite = sleep + fatigue + soreness + stress + mood;
   const status = getReadinessStatus(composite);
 
+  function toggleZone(zone: string) {
+    setSelectedZones((prev) =>
+      prev.includes(zone) ? prev.filter((z) => z !== zone) : [...prev, zone]
+    );
+  }
+
   async function saveWellness(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     setFeedback(null);
+
+    const combinedPain = [...selectedZones, painNote.trim()].filter(Boolean).join(', ') || null;
 
     const { error } = await supabase.from('wellness_logs').upsert(
       {
@@ -38,7 +48,7 @@ export default function AthleteWellnessTab({ athleteId, logs, onSaved }: { athle
         muscle_soreness: soreness,
         stress_level: stress,
         mood: mood,
-        pain_location: painLoc.trim() || null,
+        pain_location: combinedPain,
       },
       { onConflict: 'athlete_id,log_date' }
     );
@@ -67,10 +77,16 @@ export default function AthleteWellnessTab({ athleteId, logs, onSaved }: { athle
             <input type="date" value={logDate} onChange={(e) => setLogDate(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded p-2" />
           </div>
           <div>
-            <label className="text-slate-400 block mb-1">Muscle Soreness / Pain Area (Optional)</label>
-            <input type="text" placeholder="e.g. Right hamstring tightness" value={painLoc} onChange={(e) => setPainLoc(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded p-2" />
+            <label className="text-slate-400 block mb-1">Additional Soreness / Pain Note (Optional)</label>
+            <input type="text" placeholder="e.g. Mild tightness during warm-up" value={painNote} onChange={(e) => setPainNote(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded p-2" />
           </div>
         </div>
+
+        <AnatomicalBodySelector
+          selectedZones={selectedZones}
+          onToggleZone={toggleZone}
+          onClearAll={() => setSelectedZones([])}
+        />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {[
@@ -108,7 +124,7 @@ export default function AthleteWellnessTab({ athleteId, logs, onSaved }: { athle
             <tr>
               <th className="py-2">Date</th>
               <th>Readiness</th>
-              <th>Pain / Soreness Note</th>
+              <th>Tapped / Reported Sore Areas</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800">
@@ -120,7 +136,7 @@ export default function AthleteWellnessTab({ athleteId, logs, onSaved }: { athle
                   <td>
                     <span className={`px-2 py-0.5 rounded-full border text-[10px] ${st.color}`}>{st.label}</span>
                   </td>
-                  <td className="text-slate-400">{l.pain_location || 'None'}</td>
+                  <td className="text-slate-300">{l.pain_location || 'None'}</td>
                 </tr>
               );
             })}
