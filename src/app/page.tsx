@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AuthSignupFields from '@/components/AuthSignupFields';
+import { submitAuthForm } from '@/lib/authSubmission';
 import { CoachingDiscipline } from '@/lib/disciplines';
 import { Activity } from 'lucide-react';
 
@@ -20,6 +21,7 @@ function AuthForm() {
   const [managerId, setManagerId] = useState('');
   const [claimAthleteId, setClaimAthleteId] = useState('');
   const [inviteCode, setInviteCode] = useState('');
+  const [platformKey, setPlatformKey] = useState('');
   const [specialty, setSpecialty] = useState('Sports Physician');
   const [grade, setGrade] = useState('Grade 11');
   const [age, setAge] = useState('17');
@@ -32,6 +34,7 @@ function AuthForm() {
     const qCoach = searchParams.get('coach');
     const qManager = searchParams.get('manager');
     const qAthlete = searchParams.get('athlete');
+    const qKey = searchParams.get('key');
 
     if (qRole === 'athlete' || qRole === 'medical' || qRole === 'coach' || qRole === 'manager') {
       setRole(qRole);
@@ -44,6 +47,10 @@ function AuthForm() {
     if (qManager) {
       setManagerId(qManager);
       setRole('coach');
+      setMode('signup');
+    }
+    if (qKey) {
+      setPlatformKey(qKey);
       setMode('signup');
     }
     if (qAthlete) {
@@ -67,74 +74,12 @@ function AuthForm() {
     setErrorMsg('');
 
     try {
-      if (mode === 'login') {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-
-        const { data: prof } = await supabase.from('profiles').select('role, is_suspended').eq('id', data.user.id).single();
-        if (prof?.is_suspended) {
-          await supabase.auth.signOut();
-          throw new Error('Your program access has been suspended. Contact your Program Manager.');
-        }
-        if (prof?.role === 'manager') router.push('/manager');
-        else if (prof?.role === 'coach') router.push('/coach');
-        else if (prof?.role === 'medical') router.push('/medical');
-        else router.push('/athlete');
-      } else {
-        const cleanCoachId = coachId.trim();
-        const cleanManagerId = managerId.trim();
-        let resolvedDiscipline: CoachingDiscipline = discipline;
-
-        if (cleanCoachId) {
-          const isStaff = role === 'coach' || role === 'medical';
-          const { data: isValid, error: codeErr } = await supabase.rpc('verify_squad_invite_code', {
-            p_coach_id: cleanCoachId,
-            p_code: inviteCode.trim(),
-            p_is_staff: isStaff,
-          });
-          if (codeErr || !isValid) {
-            throw new Error(isStaff ? 'Invalid Staff Access Code.' : 'Invalid Squad Access Code.');
-          }
-
-          const { data: headCoachProf } = await supabase.from('profiles').select('coaching_discipline').eq('id', cleanCoachId).maybeSingle();
-          if (headCoachProf?.coaching_discipline) {
-            resolvedDiscipline = headCoachProf.coaching_discipline as CoachingDiscipline;
-          }
-        } else if (role === 'coach' && cleanManagerId) {
-          const { data: mgrValid, error: mgrErr } = await supabase.rpc('verify_program_invite_code', {
-            p_manager_id: cleanManagerId,
-            p_code: inviteCode.trim(),
-          });
-          if (mgrErr || !mgrValid) {
-            throw new Error('Invalid Program Access Code. Ask your Program Manager.');
-          }
-        }
-
-        const { data, error } = await supabase.auth.signUp({ email, password });
-        if (error) throw error;
-        if (!data.user) throw new Error('Signup failed. Please try again.');
-
-        const { error: profErr } = await supabase.rpc('complete_user_signup', {
-          p_user_id: data.user.id,
-          p_role: role,
-          p_discipline: resolvedDiscipline,
-          p_full_name: fullName.trim(),
-          p_email: email.trim(),
-          p_coach_id: cleanCoachId || null,
-          p_specialty: role === 'medical' ? specialty : null,
-          p_grade: role === 'athlete' ? grade : null,
-          p_age: role === 'athlete' ? parseInt(age) || null : null,
-          p_gender: role === 'athlete' ? gender : null,
-          p_claim_athlete_id: claimAthleteId.trim() || null,
-          p_program_manager_id: role === 'coach' && !cleanCoachId ? cleanManagerId || null : null,
-        });
-        if (profErr) throw profErr;
-
-        if (role === 'manager') router.push('/manager');
-        else if (role === 'coach') router.push('/coach');
-        else if (role === 'medical') router.push('/medical');
-        else router.push('/athlete');
-      }
+      const targetRoute = await submitAuthForm({
+        mode, role, discipline, fullName, email, password,
+        coachId, managerId, claimAthleteId, inviteCode, platformKey,
+        specialty, grade, age, gender,
+      });
+      router.push(targetRoute);
     } catch (err: any) {
       setErrorMsg(err.message || 'Authentication error');
     } finally {
@@ -150,7 +95,7 @@ function AuthForm() {
             <Activity className="w-6 h-6" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight">FAST Athletics AMS</h1>
-          <p className="text-xs text-slate-400">Sprints, Distance, Jumps &amp; Throws Performance, Wellness &amp; Medical Hub</p>
+          <p className="text-xs text-slate-400">Invite-Only Performance, Wellness &amp; Medical Hub</p>
         </div>
 
         <div className="grid grid-cols-2 bg-slate-800 p-1 rounded-lg text-sm font-medium">
@@ -175,6 +120,7 @@ function AuthForm() {
               coachId={coachId} setCoachId={setCoachId}
               managerId={managerId} setManagerId={setManagerId}
               inviteCode={inviteCode} setInviteCode={setInviteCode}
+              platformKey={platformKey} setPlatformKey={setPlatformKey}
             />
           )}
 
