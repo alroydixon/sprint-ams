@@ -159,12 +159,13 @@ export default function AthleteDashboard() {
           </div>
         )}
         {tab === 'wellness' && <AthleteWellnessTab athleteId={profile.id} logs={filteredWellness} onSaved={loadData} />}
-        {tab === 'meetday' && (
-          <div className="space-y-6">
-            <AthleteUpcomingMeetsCard athleteId={profile.id} coachId={profile.coach_id} />
-            <AthleteMeetDayTab />
-          </div>
-        )}
+       {tab === 'meetday' && (
+  <AthleteMeetDayTab
+    athleteId={profile.id}
+    coachId={profile.coach_id}
+    discipline={profile.coaching_discipline}
+  />
+)}
       </main>
 
       {editingProfile && (
