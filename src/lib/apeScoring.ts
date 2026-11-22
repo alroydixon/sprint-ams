@@ -1,3 +1,4 @@
+import { calculateWorldAthleticsSeniorPoints } from './worldAthleticsSeniorScoring';
 import { EXTRA_APE_ANCHORS } from './apeFieldAndDistanceAnchors';
 
 export type ApeAgeBand = 'U15' | 'U16' | 'U17' | 'U18' | 'U20';
@@ -102,6 +103,27 @@ export function resolveApeAgeBand(age?: number | null, grade?: string | null): A
 }
 
 export function calculateApePoints(
+  const isSenior =
+  (grade || '').trim().toLowerCase() === 'senior' ||
+  (typeof age === 'number' && age >= 20);
+
+if (isSenior) {
+  const waPts = calculateWorldAthleticsSeniorPoints(gender, event, markValue);
+  if (waPts !== null) {
+    return {
+      points: waPts,
+      ageBand: 'U20' as ApeAgeBand,
+      standardBadge:
+        waPts >= 1150
+          ? 'WA International'
+          : waPts >= 1000
+          ? 'WA National'
+          : waPts >= 850
+          ? 'Provincial'
+          : 'Club / Senior',
+    };
+  }
+}
   gender: string | null | undefined,
   age: number | null | undefined,
   grade: string | null | undefined,
