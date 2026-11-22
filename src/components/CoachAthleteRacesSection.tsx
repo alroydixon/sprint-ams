@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { formatMark, parseMarkInput } from '@/lib/disciplines';
 import AthleteEventChartCard from './AthleteEventChartCard';
@@ -11,12 +11,14 @@ export default function CoachAthleteRacesSection({
   discipline = 'sprints',
   events,
   races,
+  wellness = [],
   onChanged,
 }: {
   athleteId: string;
   discipline?: string | null;
   events: string[];
   races: any[];
+  wellness?: any[];
   onChanged: () => void;
 }) {
   const [newEvent, setNewEvent] = useState(events.at(0) || '100m');
@@ -25,6 +27,12 @@ export default function CoachAthleteRacesSection({
   const [newMeet, setNewMeet] = useState('');
   const [newWind, setNewWind] = useState('');
   const [addingRace, setAddingRace] = useState(false);
+
+  const wellnessByDate = useMemo(() => {
+    const map = new Map<string, any>();
+    wellness.forEach((w) => map.set(w.log_date, w));
+    return map;
+  }, [wellness]);
 
   async function addRaceResult(e: React.FormEvent) {
     e.preventDefault();
@@ -72,7 +80,13 @@ export default function CoachAthleteRacesSection({
       </form>
 
       {events.slice(0, 2).map((ev) => (
-        <AthleteEventChartCard key={ev} eventName={ev} discipline={discipline} races={races.filter((r) => r.event === ev)} />
+        <AthleteEventChartCard
+          key={ev}
+          event={ev}
+          discipline={discipline}
+          evRaces={races.filter((r) => r.event === ev)}
+          wellnessByDate={wellnessByDate}
+        />
       ))}
 
       <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 overflow-x-auto">
