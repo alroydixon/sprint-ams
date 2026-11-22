@@ -5,6 +5,17 @@ import { calculateWorldAthleticsSeniorPoints } from './worldAthleticsSeniorScori
 
 export type { ApeAgeBand, ApeGender };
 
+const FIELD_EVENTS = new Set([
+  'Long Jump',
+  'Triple Jump',
+  'High Jump',
+  'Pole Vault',
+  'Shot Put',
+  'Discus',
+  'Javelin',
+  'Hammer Throw',
+]);
+
 export function resolveApeAgeBand(age?: number | null, grade?: string | null): ApeAgeBand {
   if ((grade || '').trim().toLowerCase() === 'senior') return 'U20';
 
@@ -29,7 +40,7 @@ export function calculateApePoints(
   grade: string | null | undefined,
   event: string,
   markValue: number
-): { points: number; ageBand: ApeAgeBand; standardBadge: string } | null {
+): { points: number; ageBand: ApeAgeBand; standardBadge: string; isField: boolean } | null {
   if (!markValue || markValue <= 0) return null;
 
   const isSenior =
@@ -50,6 +61,7 @@ export function calculateApePoints(
             : waPts >= 850
             ? 'Provincial'
             : 'WA Senior',
+        isField: FIELD_EVENTS.has(event),
       };
     }
   }
@@ -74,7 +86,7 @@ export function calculateApePoints(
   else if (points >= 800) standardBadge = 'National';
   else if (points >= 650) standardBadge = 'Provincial';
 
-  return { points, ageBand, standardBadge };
+  return { points, ageBand, standardBadge, isField: Boolean(bench.isField) };
 }
 
 export function evaluateSquadApeLeaderboard(
@@ -87,7 +99,7 @@ export function evaluateSquadApeLeaderboard(
   return athletes
     .map((athlete) => {
       const athRaces = races.filter((r) => r.athlete_id === athlete.id);
-      const bestByEvent = new Map<string, { event: string; mark: number; date: string; meet: string; points: number; ageBand: ApeAgeBand; standardBadge: string }>();
+      const bestByEvent = new Map<string, { event: string; mark: number; date: string; meet: string; points: number; ageBand: ApeAgeBand; standardBadge: string; isField: boolean }>();
 
       athRaces.forEach((r) => {
         const mark = Number(r.time_seconds);
@@ -105,6 +117,7 @@ export function evaluateSquadApeLeaderboard(
             points: scored.points,
             ageBand: scored.ageBand,
             standardBadge: scored.standardBadge,
+            isField: scored.isField,
           });
         }
       });
