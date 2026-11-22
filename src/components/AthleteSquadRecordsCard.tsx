@@ -3,7 +3,26 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { getEventsForDiscipline, formatMark, isBetterMark } from '@/lib/disciplines';
-import { Trophy, Filter } from 'lucide-react';
+import { Trophy } from 'lucide-react';
+
+function resolveRowAgeGroup(age?: number | null, grade?: string | null): string {
+  if (age && age > 0) {
+    if (age <= 14) return 'U14';
+    if (age === 15) return 'U15';
+    if (age === 16) return 'U16';
+    if (age === 17) return 'U17';
+    if (age <= 19) return 'U19';
+    return 'Senior';
+  }
+  const g = (grade || '').toLowerCase();
+  if (g.includes('8')) return 'U14';
+  if (g.includes('9')) return 'U15';
+  if (g.includes('10')) return 'U16';
+  if (g.includes('11')) return 'U17';
+  if (g.includes('12')) return 'U19';
+  if (g.includes('senior')) return 'Senior';
+  return 'U19';
+}
 
 export default function AthleteSquadRecordsCard({
   coachId,
@@ -14,7 +33,7 @@ export default function AthleteSquadRecordsCard({
 }) {
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [gradeFilter, setGradeFilter] = useState('ALL');
+  const [ageFilter, setAgeFilter] = useState('ALL');
   const [genderFilter, setGenderFilter] = useState<'ALL' | 'Boy' | 'Girl'>('ALL');
 
   useEffect(() => {
@@ -30,66 +49,60 @@ export default function AthleteSquadRecordsCard({
 
   const events = getEventsForDiscipline(discipline);
 
-  const filteredRows = useMemo(() => {
-    return rows.filter((r) => {
-      const gen: 'Boy' | 'Girl' =
-        (r.gender || '').toLowerCase().startsWith('g') || (r.gender || '').toLowerCase().startsWith('f')
-          ? 'Girl'
-          : 'Boy';
-      if (genderFilter !== 'ALL' && gen !== genderFilter) return false;
-      if (gradeFilter !== 'ALL' && (r.grade || '') !== gradeFilter) return false;
-      return true;
-    });
-  }, [rows, gradeFilter, genderFilter]);
+  const recordsByEvent = useMemo(() => {
+    const map = new Map<string, any>();
 
-  const recordsByDivision = useMemo(() => {
-    const out: Record<'Boy' | 'Girl', Record<string, any>> = { Boy: {}, Girl: {} };
-    filteredRows.forEach((r) => {
+    rows.forEach((r) => {
       const gen: 'Boy' | 'Girl' =
         (r.gender || '').toLowerCase().startsWith('g') || (r.gender || '').toLowerCase().startsWith('f')
           ? 'Girl'
           : 'Boy';
-      const cur = out[gen][r.event];
+      if (genderFilter !== 'ALL' && gen !== genderFilter) return;
+
+      const ag = resolveRowAgeGroup(r.age, r.grade);
+      if (ageFilter !== 'ALL' && ag !== ageFilter) return;
+
+      const cur = map.get(r.event);
       if (!cur || isBetterMark(Number(r.time_seconds), Number(cur.time_seconds), discipline)) {
-        out[gen][r.event] = r;
+        map.set(r.event, r);
       }
     });
-    return out;
-  }, [filteredRows, discipline]);
+
+    return map;
+  }, [rows, ageFilter, genderFilter, discipline]);
 
   if (!coachId) return null;
 
-  const visibleDivisions: ('Boy' | 'Girl')[] =
-    genderFilter === 'ALL' ? ['Boy', 'Girl'] : [genderFilter];
+  const ageLabel = ageFilter === 'ALL' ? 'All Ages' : ageFilter;
+  const divLabel =
+    genderFilter === 'ALL' ? 'All Divisions' : genderFilter === 'Boy' ? 'Boys' : 'Girls';
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4 text-xs">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
-        <div>
-          <h3 className="font-bold text-sm text-amber-400 flex items-center gap-1.5">
-            <Trophy className="w-4 h-4" /> All-Time Squad Records Board
-          </h3>
-          <p className="text-[11px] text-slate-400 mt-0.5">
-            Filter by Grade / Category &amp; Division to view official squad benchmarks
-          </p>
+    <div className="space-y-4 text-xs">
+      {/* Filter Bar matching Coach Records Tab */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-slate-400 font-semibold">Age Category:</span>
+          <div className="flex flex-wrap bg-slate-800 p-0.5 rounded-lg gap-0.5">
+            {(['ALL', 'U14', 'U15', 'U16', 'U17', 'U19'] as const).map((ag) => (
+              <button
+                key={ag}
+                type="button"
+                onClick={() => setAgeFilter(ag)}
+                className={`px-2.5 py-1 rounded-md font-semibold transition ${
+                  ageFilter === ag
+                    ? 'bg-emerald-500 text-slate-950'
+                    : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                {ag === 'ALL' ? 'All Ages' : ag}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Filter className="w-3.5 h-3.5 text-slate-400" />
-          <select
-            value={gradeFilter}
-            onChange={(e) => setGradeFilter(e.target.value)}
-            className="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-semibold"
-          >
-            <option value="ALL">All Grades / Ages</option>
-            <option value="Grade 8">Grade 8</option>
-            <option value="Grade 9">Grade 9</option>
-            <option value="Grade 10">Grade 10</option>
-            <option value="Grade 11">Grade 11</option>
-            <option value="Grade 12">Grade 12</option>
-            <option value="Senior">Senior</option>
-          </select>
-
+        <div className="flex items-center gap-2">
+          <span className="text-slate-400 font-semibold">Division:</span>
           <div className="flex bg-slate-800 p-0.5 rounded-lg">
             {(['ALL', 'Boy', 'Girl'] as const).map((g) => (
               <button
@@ -97,71 +110,58 @@ export default function AthleteSquadRecordsCard({
                 type="button"
                 onClick={() => setGenderFilter(g)}
                 className={`px-2.5 py-1 rounded-md font-semibold transition ${
-                  genderFilter === g ? 'bg-emerald-500 text-slate-950' : 'text-slate-300 hover:text-white'
+                  genderFilter === g
+                    ? 'bg-emerald-500 text-slate-950'
+                    : 'text-slate-300 hover:text-white'
                 }`}
               >
-                {g === 'ALL' ? 'All' : g === 'Boy' ? 'Boys / Men' : 'Girls / Women'}
+                {g === 'ALL' ? 'All' : g === 'Boy' ? 'Boys' : 'Girls'}
               </button>
             ))}
           </div>
         </div>
       </div>
 
-      {loading ? (
-        <p className="text-slate-500 py-4 text-center">Loading squad records...</p>
-      ) : (
-        <div className={`grid grid-cols-1 ${visibleDivisions.length > 1 ? 'md:grid-cols-2' : ''} gap-4`}>
-          {visibleDivisions.map((gen) => (
-            <div key={gen} className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden">
-              <div className="px-3.5 py-2.5 bg-slate-900/80 border-b border-slate-800 flex items-center justify-between">
-                <h4 className="font-bold text-xs text-emerald-400 uppercase tracking-wider">
-                  {gen === 'Boy' ? 'Boys / Men Division' : 'Girls / Women Division'}
-                </h4>
-                <span className="text-[10px] text-slate-400">
-                  {gradeFilter === 'ALL' ? 'Overall Squad Record' : gradeFilter}
-                </span>
-              </div>
+      {/* Squad Records Board Card Grid matching Coach Records Tab */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+        <h3 className="font-bold text-sm text-amber-400 flex items-center gap-1.5">
+          <Trophy className="w-4 h-4" /> Squad Records Board ({ageLabel} • {divLabel})
+        </h3>
 
-              <table className="w-full text-left">
-                <thead className="text-[11px] text-slate-400 border-b border-slate-800/80">
-                  <tr>
-                    <th className="py-2 px-3.5">Event</th>
-                    <th>Record</th>
-                    <th>Holder &amp; Meet</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {events.map((ev) => {
-                    const rec = recordsByDivision[gen][ev];
-                    return (
-                      <tr key={ev} className="hover:bg-slate-900/50">
-                        <td className="py-2 px-3.5 font-bold text-white">{ev}</td>
-                        <td className="font-mono font-extrabold text-amber-300">
-                          {rec ? formatMark(Number(rec.time_seconds), discipline) : '—'}
-                        </td>
-                        <td className="py-2 pr-3.5">
-                          {rec ? (
-                            <div>
-                              <span className="font-semibold text-slate-200 block">{rec.athlete_name}</span>
-                              <span className="text-[10px] text-slate-400">
-                                {rec.grade ? `${rec.grade} • ` : ''}
-                                {rec.race_date}
-                                {rec.meet_name ? ` • ${rec.meet_name}` : ''}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-slate-600">Vacant</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          ))}
-        </div>
-      )}
+        {loading ? (
+          <p className="text-slate-500 py-4 text-center">Loading squad records...</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {events.map((ev) => {
+              const rec = recordsByEvent.get(ev);
+              if (!rec) return null;
+              return (
+                <div
+                  key={ev}
+                  className="bg-slate-950 border border-slate-800 rounded-xl p-3.5 space-y-1"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-emerald-400 font-bold">{ev} Record</span>
+                    <span className="font-mono font-extrabold text-sm text-white">
+                      {formatMark(Number(rec.time_seconds), discipline)}
+                    </span>
+                  </div>
+                  <p className="font-bold text-white text-xs">
+                    {rec.athlete_name}{' '}
+                    {rec.is_archived && (
+                      <span className="text-amber-400 font-semibold text-[11px]">(Alumni)</span>
+                    )}
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    {rec.grade || ''}
+                    {rec.age ? ` (${rec.age}y)` : ''} • {rec.race_date}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

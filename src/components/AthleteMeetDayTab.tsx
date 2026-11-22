@@ -3,20 +3,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import AthleteSquadRecordsCard from './AthleteSquadRecordsCard';
-import { Timer, Play, Pause, RotateCcw, Calendar, MapPin, CheckSquare, Square } from 'lucide-react';
+import { Clock, Calendar, MapPin, CheckSquare, Square, Flame } from 'lucide-react';
 
-const WARMUP_STAGES = [
-  { label: 'T-60m: Easy Jog & Mobility', minutes: 15 },
-  { label: 'T-45m: Dynamic Sprint Drills (A/B Skips)', minutes: 15 },
-  { label: 'T-30m: Progressive Build-Up Strides (3x60m)', minutes: 10 },
-  { label: 'T-20m: Spikes On & 2x Block Starts', minutes: 10 },
-  { label: 'T-10m: Call Room & Hydration Ready', minutes: 10 },
-];
-
-const CHECKLIST_ITEMS = [
+const CHECKLIST = [
   'Track spikes & 6mm/9mm pins packed',
   'Club / School competition vest & shorts',
-  '2L water bottle + electrolytes',
+  '2L hydration bottle + electrolytes',
   'Light carb snack (banana / energy bar)',
   'Foam roller / mobility band',
 ];
@@ -31,143 +23,162 @@ export default function AthleteMeetDayTab({
   discipline?: string | null;
 }) {
   const [entries, setEntries] = useState<any[]>([]);
-  const [activeStageIdx, setActiveStageIdx] = useState(0);
-  const [secondsLeft, setSecondsLeft] = useState(WARMUP_STAGES[0].minutes * 60);
-  const [running, setRunning] = useState(false);
+  const [now, setNow] = useState<Date>(() => new Date());
   const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     supabase
       .from('meet_entries')
       .select('*, meets(*)')
       .eq('athlete_id', athleteId)
-      .then(({ data }) => setEntries(data || []));
+      .then(({ data }) => {
+        const sorted = (data || []).sort((a, b) =>
+          (a.meets?.meet_date || '').localeCompare(b.meets?.meet_date || '')
+        );
+        setEntries(sorted);
+        setLoading(false);
+      });
   }, [athleteId]);
 
   useEffect(() => {
-    if (!running) return;
-    const interval = setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev <= 1) {
-          setRunning(false);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [running]);
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
-  function selectStage(idx: number) {
-    setRunning(false);
-    setActiveStageIdx(idx);
-    setSecondsLeft(WARMUP_STAGES[idx].minutes * 60);
-  }
+  const upcomingEntry = entries.find((e) => {
+    const d = e.meets?.meet_date;
+    if (!d) return false;
+    return new Date(`${d}T23:59:59`).getTime() >= now.getTime();
+  }) || entries.at(0);
 
-  const mins = String(Math.floor(secondsLeft / 60)).padStart(2, '0');
-  const secs = String(secondsLeft % 60).padStart(2, '0');
+  const targetDateStr = upcomingEntry?.meets?.meet_date;
+  const targetTime = targetDateStr ? new Date(`${targetDateStr}T09:00:00`).getTime() : null;
+  const diffMs = targetTime ? Math.max(0, targetTime - now.getTime()) : 0;
+
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
+  const minutes = Math.floor((diffMs / (1000 * 60)) % 60);
+  const seconds = Math.floor((diffMs / 1000) % 60);
 
   return (
     <div className="space-y-6 text-xs">
-      {/* Meet-Day Warm-Up Countdown Timer */}
+      {/* Live Meet Countdown Clock & Entered Events */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="font-bold text-sm text-emerald-400 flex items-center gap-1.5">
-            <Timer className="w-4 h-4" /> Meet-Day Warm-Up Protocol Timer
+            <Clock className="w-4 h-4" /> Next Competition Countdown
           </h3>
-          <span className="text-[11px] text-slate-400">{WARMUP_STAGES[activeStageIdx].label}</span>
+          {upcomingEntry?.meets && (
+            <span className="text-slate-300 font-semibold">
+              {upcomingEntry.meets.meet_name} • {upcomingEntry.meets.meet_date}
+            </span>
+          )}
         </div>
 
-        <div className="flex flex-wrap gap-1.5">
-          {WARMUP_STAGES.map((st, idx) => (
-            <button
-              key={st.label}
-              type="button"
-              onClick={() => selectStage(idx)}
-              className={`px-2.5 py-1.5 rounded-lg border font-semibold transition ${
-                activeStageIdx === idx
-                  ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300'
-                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
-              }`}
-            >
-              {st.label.split(':')[0]} ({st.minutes}m)
-            </button>
-          ))}
-        </div>
+        {targetTime ? (
+          <div className="grid grid-cols-4 gap-2 text-center">
+            {[
+              { label: 'Days', val: String(days).padStart(2, '0') },
+              { label: 'Hours', val: String(hours).padStart(2, '0') },
+              { label: 'Mins', val: String(minutes).padStart(2, '0') },
+              { label: 'Secs', val: String(seconds).padStart(2, '0') },
+            ].map((unit) => (
+              <div key={unit.label} className="bg-slate-950 border border-slate-800 rounded-xl p-3">
+                <strong className="text-2xl sm:text-3xl font-mono font-extrabold text-amber-300 block">
+                  {unit.val}
+                </strong>
+                <span className="text-[11px] text-slate-400 uppercase tracking-wider">{unit.label}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-slate-400 py-2">No upcoming meet scheduled yet.</p>
+        )}
 
-        <div className="bg-slate-950 border border-slate-800 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
-          <div className="font-mono text-4xl font-extrabold text-amber-300 tracking-wider">
-            {mins}:{secs}
+        {/* Entered Meet Events */}
+        {!loading && entries.length > 0 && (
+          <div className="space-y-2 pt-2 border-t border-slate-800">
+            <h4 className="font-bold text-slate-300 flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-emerald-400" /> Entered Meet Schedule
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {entries.map((entry) => {
+                const m = entry.meets;
+                if (!m) return null;
+                const eventList = String(entry.events || 'Selected')
+                  .split(/[,/&]+/)
+                  .map((s) => s.trim())
+                  .filter(Boolean);
+
+                return (
+                  <div key={entry.id} className="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-1.5">
+                    <div className="flex justify-between items-start gap-2">
+                      <strong className="text-white text-sm">{m.meet_name}</strong>
+                      <div className="flex flex-wrap gap-1 justify-end">
+                        {eventList.map((ev) => (
+                          <span key={ev} className="px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-bold">
+                            {ev}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-slate-400 flex items-center gap-1.5">
+                      <Calendar className="w-3 h-3 text-amber-400" /> {m.meet_date}
+                      {m.location && (
+                        <>
+                          <span>•</span>
+                          <MapPin className="w-3 h-3 text-sky-400" /> {m.location}
+                        </>
+                      )}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setRunning(!running)}
-              className="inline-flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2 rounded-lg"
-            >
-              {running ? <><Pause className="w-4 h-4" /> Pause</> : <><Play className="w-4 h-4" /> Start Timer</>}
-            </button>
-            <button
-              type="button"
-              onClick={() => selectStage(activeStageIdx)}
-              className="inline-flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold px-3 py-2 rounded-lg"
-            >
-              <RotateCcw className="w-4 h-4" /> Reset
-            </button>
-          </div>
-        </div>
+        )}
       </div>
 
-      {/* Assigned Upcoming Meets */}
-      {entries.length > 0 && (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+      {/* Pre-Race Warmup Timeline & Kit Checklist */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2.5">
           <h3 className="font-bold text-sm text-emerald-400 flex items-center gap-1.5">
-            <Calendar className="w-4 h-4" /> My Selected Meets
+            <Flame className="w-4 h-4 text-amber-400" /> Race-Day Warm-Up Timeline
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {entries.map((entry) => {
-              const meet = entry.meets;
-              if (!meet) return null;
+          <ul className="space-y-1.5 text-slate-300">
+            <li className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2"><strong className="text-amber-300">T-60m:</strong> 8 min easy jog + dynamic joint mobility</li>
+            <li className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2"><strong className="text-amber-300">T-45m:</strong> Sprint mechanics (A-skips, B-skips, high knees)</li>
+            <li className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2"><strong className="text-amber-300">T-30m:</strong> 3 × 60m progressive build-up strides (80%→95%)</li>
+            <li className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2"><strong className="text-amber-300">T-20m:</strong> Spikes on + 2 × 20m explosive block/standing starts</li>
+            <li className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2"><strong className="text-emerald-400">T-10m:</strong> Call room check-in, sip electrolytes &amp; stay warm</li>
+          </ul>
+        </div>
+
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2.5">
+          <h3 className="font-bold text-sm text-emerald-400">Competition Kit Checklist</h3>
+          <div className="space-y-2">
+            {CHECKLIST.map((item) => {
+              const done = Boolean(checked[item]);
               return (
-                <div key={entry.id} className="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-1">
-                  <div className="flex justify-between items-center">
-                    <strong className="text-white">{meet.meet_name}</strong>
-                    <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 font-bold">{entry.events || 'Selected'}</span>
-                  </div>
-                  <p className="text-slate-400 flex items-center gap-1">
-                    <MapPin className="w-3 h-3" /> {meet.meet_date} {meet.location ? `• ${meet.location}` : ''}
-                  </p>
-                </div>
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setChecked((p) => ({ ...p, [item]: !p[item] }))}
+                  className={`w-full flex items-center gap-2.5 p-2.5 rounded-lg border text-left transition ${
+                    done ? 'bg-emerald-950/40 border-emerald-600/50 text-emerald-200 line-through' : 'bg-slate-950 border-slate-800 text-slate-200'
+                  }`}
+                >
+                  {done ? <CheckSquare className="w-4 h-4 text-emerald-400 shrink-0" /> : <Square className="w-4 h-4 text-slate-500 shrink-0" />}
+                  <span>{item}</span>
+                </button>
               );
             })}
           </div>
         </div>
-      )}
-
-      {/* Kit Checklist */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2.5">
-        <h3 className="font-bold text-sm text-emerald-400">Competition Kit Checklist</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {CHECKLIST_ITEMS.map((item) => {
-            const done = Boolean(checked[item]);
-            return (
-              <button
-                key={item}
-                type="button"
-                onClick={() => setChecked((p) => ({ ...p, [item]: !p[item] }))}
-                className={`flex items-center gap-2 p-2 rounded-lg border text-left ${
-                  done ? 'bg-emerald-950/40 border-emerald-600/50 text-emerald-200 line-through' : 'bg-slate-950 border-slate-800 text-slate-200'
-                }`}
-              >
-                {done ? <CheckSquare className="w-4 h-4 text-emerald-400 shrink-0" /> : <Square className="w-4 h-4 text-slate-500 shrink-0" />}
-                <span>{item}</span>
-              </button>
-            );
-          })}
-        </div>
       </div>
 
-      {/* Coach-Style All-Time Squad Records Board with Grade & Gender Filters */}
+      {/* Exact Coach-Style Squad Records Board with Age Category & Division Filters */}
       <AthleteSquadRecordsCard coachId={coachId} discipline={discipline} />
     </div>
   );
