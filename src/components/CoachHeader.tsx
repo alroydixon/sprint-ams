@@ -2,12 +2,10 @@
 
 import { useState } from 'react';
 import { DISCIPLINE_OPTIONS } from '@/lib/disciplines';
-import ProfileSettingsModal from './ProfileSettingsModal';
 import SuperAdminKeysModal from './SuperAdminKeysModal';
 import {
   UserPlus,
   Check,
-  KeyRound,
   Mail,
   UserCog,
   LogOut,
@@ -16,34 +14,32 @@ import {
 
 export default function CoachHeader({
   coach,
-  isHeadCoach,
-  activeAthleteCount,
-  onCoachUpdated,
-  onOpenAccessModal,
-  onOpenReportModal,
+  effectiveCoachId,
+  isAssistant,
+  activeCount,
+  onDigestClick,
+  onEditClick,
   onSignOut,
 }: {
   coach: any;
-  isHeadCoach: boolean;
-  activeAthleteCount: number;
-  onCoachUpdated: (updated: any) => void;
-  onOpenAccessModal: () => void;
-  onOpenReportModal: () => void;
+  effectiveCoachId: string;
+  isAssistant: boolean;
+  activeCount: number;
+  onDigestClick: () => void;
+  onEditClick: () => void;
   onSignOut: () => void;
 }) {
   const [copiedRole, setCopiedRole] = useState<'athlete' | 'coach' | null>(null);
-  const [showProfileModal, setShowProfileModal] = useState(false);
   const [showSuperAdmin, setShowSuperAdmin] = useState(false);
 
- const disciplineMeta =
-  DISCIPLINE_OPTIONS.find((d) => d.id === coach.coaching_discipline) || DISCIPLINE_OPTIONS.at(0)!;
-
+  const disciplineMeta =
+    DISCIPLINE_OPTIONS.find((d) => d.id === coach.coaching_discipline) || DISCIPLINE_OPTIONS.at(0)!;
   const isSuperAdmin = coach.email?.toLowerCase() === 'alroydixon57@gmail.com';
 
   function copyInviteLink(targetRole: 'athlete' | 'coach') {
     const origin =
       typeof window !== 'undefined' ? window.location.origin : 'https://vercel.app';
-    const url = `${origin}/?role=${targetRole}&coach=${encodeURIComponent(coach.id)}`;
+    const url = `${origin}/?role=${targetRole}&coach=${encodeURIComponent(effectiveCoachId)}`;
     navigator.clipboard.writeText(url);
     setCopiedRole(targetRole);
     setTimeout(() => setCopiedRole(null), 2500);
@@ -71,7 +67,7 @@ export default function CoachHeader({
                 </span>
               </div>
               <p className="text-xs text-slate-400">
-                {coach.club_name || 'FAST Athletics Academy'} • {activeAthleteCount} Active Athletes
+                {coach.club_name || 'FAST Athletics Academy'} • {activeCount} Active Athletes
               </p>
             </div>
           </div>
@@ -87,7 +83,7 @@ export default function CoachHeader({
               </button>
             )}
 
-            {isHeadCoach && (
+            {!isAssistant && (
               <>
                 <button
                   type="button"
@@ -120,20 +116,12 @@ export default function CoachHeader({
                     </>
                   )}
                 </button>
-
-                <button
-                  type="button"
-                  onClick={onOpenAccessModal}
-                  className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-amber-300 font-semibold px-3 py-1.5 rounded-lg"
-                >
-                  <KeyRound className="w-3.5 h-3.5" /> Access Codes
-                </button>
               </>
             )}
 
             <button
               type="button"
-              onClick={onOpenReportModal}
+              onClick={onDigestClick}
               className="flex items-center gap-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold px-3 py-1.5 rounded-lg"
             >
               <Mail className="w-3.5 h-3.5" /> Weekly Report
@@ -141,7 +129,7 @@ export default function CoachHeader({
 
             <button
               type="button"
-              onClick={() => setShowProfileModal(true)}
+              onClick={onEditClick}
               className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold px-3 py-1.5 rounded-lg"
             >
               <UserCog className="w-3.5 h-3.5" /> Edit Profile
@@ -157,14 +145,6 @@ export default function CoachHeader({
           </div>
         </div>
       </header>
-
-      {showProfileModal && (
-        <ProfileSettingsModal
-          profile={coach}
-          onUpdated={onCoachUpdated}
-          onClose={() => setShowProfileModal(false)}
-        />
-      )}
 
       {showSuperAdmin && (
         <SuperAdminKeysModal onClose={() => setShowSuperAdmin(false)} />

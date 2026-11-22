@@ -26,8 +26,8 @@ export default function AuthSignupFields({
   setManagerId,
   inviteCode,
   setInviteCode,
-  platformKey,
-  setPlatformKey,
+  platformKey = '',
+  setPlatformKey = () => {},
 }: {
   role: 'athlete' | 'coach' | 'medical' | 'manager';
   setRole: (r: 'athlete' | 'coach' | 'medical' | 'manager') => void;
@@ -49,8 +49,8 @@ export default function AuthSignupFields({
   setManagerId: (v: string) => void;
   inviteCode: string;
   setInviteCode: (v: string) => void;
-  platformKey: string;
-  setPlatformKey: (v: string) => void;
+  platformKey?: string;
+  setPlatformKey?: (v: string) => void;
 }) {
   const [coachType, setCoachType] = useState<'head' | 'assistant'>(coachId ? 'assistant' : 'head');
 
