@@ -35,8 +35,9 @@ export default function CoachHeader({
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showSuperAdmin, setShowSuperAdmin] = useState(false);
 
-  const disciplineMeta =
-    DISCIPLINE_OPTIONS.find((d) => d.id === coach.coaching_discipline) || DISCIPLINE_OPTIONS[0];
+ const disciplineMeta =
+  DISCIPLINE_OPTIONS.find((d) => d.id === coach.coaching_discipline) || DISCIPLINE_OPTIONS.at(0)!;
+
   const isSuperAdmin = coach.email?.toLowerCase() === 'alroydixon57@gmail.com';
 
   function copyInviteLink(targetRole: 'athlete' | 'coach') {
