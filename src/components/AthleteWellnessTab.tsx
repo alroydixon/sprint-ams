@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { getReadinessStatus } from '@/lib/biomechanics';
-import AnatomicalBodySelector from './AnatomicalBodySelector';
+import AnatomicalBodySelector, { PainStage, STAGE_META } from './AnatomicalBodySelector';
 
 function getLocalTodayIso(): string {
   const now = new Date();
@@ -18,7 +18,7 @@ export default function AthleteWellnessTab({ athleteId, logs, onSaved }: { athle
   const [soreness, setSoreness] = useState(8);
   const [stress, setStress] = useState(8);
   const [mood, setMood] = useState(8);
-  const [selectedZones, setSelectedZones] = useState<string[]>([]);
+  const [zoneStages, setZoneStages] = useState<Record<string, PainStage>>({});
   const [painNote, setPainNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
@@ -26,10 +26,16 @@ export default function AthleteWellnessTab({ athleteId, logs, onSaved }: { athle
   const composite = sleep + fatigue + soreness + stress + mood;
   const status = getReadinessStatus(composite);
 
-  function toggleZone(zone: string) {
-    setSelectedZones((prev) =>
-      prev.includes(zone) ? prev.filter((z) => z !== zone) : [...prev, zone]
-    );
+  function cycleZone(zone: string) {
+    setZoneStages((prev) => {
+      const cur = prev[zone];
+      const next = { ...prev };
+      if (!cur) next[zone] = 1;
+      else if (cur === 1) next[zone] = 2;
+      else if (cur === 2) next[zone] = 3;
+      else delete next[zone];
+      return next;
+    });
   }
 
   async function saveWellness(e: React.FormEvent) {
@@ -37,7 +43,10 @@ export default function AthleteWellnessTab({ athleteId, logs, onSaved }: { athle
     setSaving(true);
     setFeedback(null);
 
-    const combinedPain = [...selectedZones, painNote.trim()].filter(Boolean).join(', ') || null;
+    const formattedZones = (Object.entries(zoneStages) as [string, PainStage][]).map(
+      ([zone, st]) => `${zone} [${STAGE_META[st].name}]`
+    );
+    const combinedPain = [...formattedZones, painNote.trim()].filter(Boolean).join(', ') || null;
 
     const { error } = await supabase.from('wellness_logs').upsert(
       {
@@ -83,9 +92,9 @@ export default function AthleteWellnessTab({ athleteId, logs, onSaved }: { athle
         </div>
 
         <AnatomicalBodySelector
-          selectedZones={selectedZones}
-          onToggleZone={toggleZone}
-          onClearAll={() => setSelectedZones([])}
+          zoneStages={zoneStages}
+          onCycleZone={cycleZone}
+          onClearAll={() => setZoneStages({})}
         />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
