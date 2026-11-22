@@ -16,15 +16,24 @@ const FIELD_EVENTS = new Set([
   'Hammer Throw',
 ]);
 
-export function resolveApeAgeBand(age?: number | null, grade?: string | null): ApeAgeBand {
-  if ((grade || '').trim().toLowerCase() === 'senior') return 'U20';
+export function isSchoolGrade(grade?: string | null): boolean {
+  const g = (grade || '').trim().toLowerCase();
+  return g.includes('grade') || ['8', '9', '10', '11', '12'].includes(g);
+}
 
+export function isSeniorAthlete(age?: number | null, grade?: string | null): boolean {
+  if (isSchoolGrade(grade)) return false;
+  if ((grade || '').trim().toLowerCase() === 'senior') return true;
+  return typeof age === 'number' && age >= 20;
+}
+
+export function resolveApeAgeBand(age?: number | null, grade?: string | null): ApeAgeBand {
   if (age && age > 0) {
     if (age <= 15) return 'U15';
     if (age === 16) return 'U16';
     if (age === 17) return 'U17';
     if (age === 18) return 'U18';
-    return 'U20';
+    return 'U20'; // U19 school category
   }
 
   const g = (grade || '').toLowerCase();
@@ -43,11 +52,8 @@ export function calculateApePoints(
 ): { points: number; ageBand: ApeAgeBand; standardBadge: string; isField: boolean } | null {
   if (!markValue || markValue <= 0) return null;
 
-  const isSenior =
-    (grade || '').trim().toLowerCase() === 'senior' ||
-    (typeof age === 'number' && age >= 20);
-
-  if (isSenior) {
+  // Strictly ONLY Senior (20+ and not a school Grade 8-12 learner) uses World Athletics Senior tables
+  if (isSeniorAthlete(age, grade)) {
     const waPts = calculateWorldAthleticsSeniorPoints(gender, event, markValue);
     if (waPts !== null) {
       return {
@@ -66,6 +72,7 @@ export function calculateApePoints(
     }
   }
 
+  // All school athletes (Grade 8-12 / U15-U19) strictly use the ASA / SASA APE tables
   const gen: ApeGender =
     (gender || '').toLowerCase().startsWith('g') || (gender || '').toLowerCase().startsWith('f')
       ? 'Girl'
@@ -75,11 +82,13 @@ export function calculateApePoints(
   const bench = table[ageBand]?.[event];
   if (!bench) return null;
 
+  // ASA/SASA APE 1000-pt reference marks are roughly 3.5% sharper than U20 championship qualifiers
+  const calibratedRef = bench.isField ? bench.refMark * 1.035 : bench.refMark * 0.968;
   const rawPoints = bench.isField
-    ? 1000 + (markValue - bench.refMark) * bench.slope
-    : 1000 + (bench.refMark - markValue) * bench.slope;
+    ? 1000 + (markValue - calibratedRef) * bench.slope
+    : 1000 + (calibratedRef - markValue) * bench.slope;
 
-  const points = Math.max(0, Math.min(1300, Math.round(rawPoints)));
+  const points = Math.max(0, Math.min(1200, Math.round(rawPoints)));
 
   let standardBadge = 'Development';
   if (points >= 900) standardBadge = 'International';
@@ -99,7 +108,10 @@ export function evaluateSquadApeLeaderboard(
   return athletes
     .map((athlete) => {
       const athRaces = races.filter((r) => r.athlete_id === athlete.id);
-      const bestByEvent = new Map<string, { event: string; mark: number; date: string; meet: string; points: number; ageBand: ApeAgeBand; standardBadge: string; isField: boolean }>();
+      const bestByEvent = new Map<
+        string,
+        { event: string; mark: number; date: string; meet: string; points: number; ageBand: ApeAgeBand; standardBadge: string; isField: boolean }
+      >();
 
       athRaces.forEach((r) => {
         const mark = Number(r.time_seconds);
@@ -125,10 +137,9 @@ export function evaluateSquadApeLeaderboard(
       const rankedEvents = Array.from(bestByEvent.values()).sort((a, b) => b.points - a.points);
       const topTwo = rankedEvents.slice(0, 2);
       const totalPoints = topTwo.reduce((sum, ev) => sum + ev.points, 0);
-      const isSenior =
-        (athlete.grade || '').trim().toLowerCase() === 'senior' ||
-        (typeof athlete.age === 'number' && athlete.age >= 20);
-      const ageBand = isSenior ? ('Senior' as any) : (topTwo.at(0)?.ageBand || resolveApeAgeBand(athlete.age, athlete.grade));
+      const senior = isSeniorAthlete(athlete.age, athlete.grade);
+      const rawBand = topTwo.at(0)?.ageBand || resolveApeAgeBand(athlete.age, athlete.grade);
+      const ageBand = senior ? ('Senior' as any) : rawBand === 'U20' ? ('U19' as any) : rawBand;
 
       return {
         athlete,
