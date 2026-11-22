@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AuthSignupFields from '@/components/AuthSignupFields';
+import PopiaConsentBox from '@/components/PopiaConsentBox';
 import { submitAuthForm } from '@/lib/authSubmission';
 import { CoachingDiscipline } from '@/lib/disciplines';
 import { Activity } from 'lucide-react';
@@ -26,6 +27,7 @@ function AuthForm() {
   const [grade, setGrade] = useState('Grade 11');
   const [age, setAge] = useState('17');
   const [gender, setGender] = useState('Boy');
+  const [popiaAccepted, setPopiaAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -74,6 +76,10 @@ function AuthForm() {
     setErrorMsg('');
 
     try {
+      if (mode === 'signup' && !popiaAccepted) {
+        throw new Error('Please accept the POPIA Privacy & Health Data Consent notice to continue.');
+      }
+
       const targetRoute = await submitAuthForm({
         mode, role, discipline, fullName, email, password,
         coachId, managerId, claimAthleteId, inviteCode, platformKey,
@@ -133,6 +139,15 @@ function AuthForm() {
             <label className="block text-xs text-slate-400 mb-1">Password</label>
             <input required type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm" />
           </div>
+
+          {mode === 'signup' && (
+            <PopiaConsentBox
+              role={role}
+              age={age}
+              accepted={popiaAccepted}
+              onChange={setPopiaAccepted}
+            />
+          )}
 
           {errorMsg && <p className="text-xs text-rose-400 bg-rose-950/50 border border-rose-800 p-2 rounded">{errorMsg}</p>}
 
