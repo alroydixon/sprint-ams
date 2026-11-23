@@ -13,20 +13,24 @@ export default function AthleteBiomechanicsGraphs({ tests }: { tests: any[] }) {
 
   const forceSeries = useMemo(() => {
     return sortedTests
-      .filter((t) => Number(t.body_weight_kg) > 0 && Number(t.sprint_20m_sec) > 0 && Number(t.sprint_40m_sec) > 0)
       .map((t) => {
+        if (!Number(t.body_weight_kg) || !Number(t.sprint_20m_sec) || !Number(t.sprint_40m_sec)) {
+          return null;
+        }
         const f = calculateHorizontalForce(
           Number(t.body_weight_kg),
           Number(t.sprint_20m_sec),
           Number(t.sprint_40m_sec)
         );
+        if (!f) return null;
         return {
           id: t.id,
           date: t.test_date,
           forceN: f.forceN,
           forcePerKg: f.forcePerKg,
         };
-      });
+      })
+      .filter((item): item is { id: string; date: string; forceN: number; forcePerKg: number } => item !== null);
   }, [sortedTests]);
 
   const heightSeries = useMemo(() => {
@@ -60,7 +64,6 @@ export default function AthleteBiomechanicsGraphs({ tests }: { tests: any[] }) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-      {/* Horizontal Force Progression Graph */}
       {forceSeries.length > 0 && (
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between gap-2">
@@ -105,7 +108,6 @@ export default function AthleteBiomechanicsGraphs({ tests }: { tests: any[] }) {
         </div>
       )}
 
-      {/* Height & Growth Spurt Development Graph */}
       {heightSeries.length > 0 && (
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
