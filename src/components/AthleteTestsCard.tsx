@@ -1,5 +1,6 @@
 'use client';
 
+import AthleteBiomechanicsGraphs from './AthleteBiomechanicsGraphs';
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import {
@@ -212,6 +213,7 @@ export default function AthleteTestsCard({
           )}
         </div>
       )}
+      <AthleteBiomechanicsGraphs tests={tests} />
     </div>
   );
 }
