@@ -182,15 +182,15 @@ export default function AthleteTestsCard({
           <div className="grid grid-cols-3 gap-2.5 text-center">
             <div className="bg-slate-950 border border-slate-800 rounded-lg p-2.5">
               <span className="text-slate-400 block">Push-Ups ({latest.pushups_1min_reps || 0} reps)</span>
-              <strong className="text-emerald-400 font-bold">{pwr.pushW} W</strong>
+              <strong className="text-emerald-400 font-bold">{pwr.pushupW} W</strong>
             </div>
             <div className="bg-slate-950 border border-slate-800 rounded-lg p-2.5">
               <span className="text-slate-400 block">Sit-Ups ({latest.situps_1min_reps || 0} reps)</span>
-              <strong className="text-emerald-400 font-bold">{pwr.sitW} W</strong>
+              <strong className="text-emerald-400 font-bold">{pwr.situpW} W</strong>
             </div>
             <div className="bg-slate-950 border border-slate-800 rounded-lg p-2.5">
               <span className="text-slate-400 block">Squat Jumps ({latest.squat_jumps_1min_reps || 0} reps)</span>
-              <strong className="text-emerald-400 font-bold">{pwr.squatW} W</strong>
+              <strong className="text-emerald-400 font-bold">{pwr.squatJumpW} W</strong>
             </div>
           </div>
 
@@ -204,8 +204,8 @@ export default function AthleteTestsCard({
               )}
               {splits && (
                 <div className="bg-slate-950 border border-slate-800 rounded-lg p-2.5">
-                  <span className="text-slate-400 block">60m Target Splits</span>
-                  <strong className="text-sky-300">10m: {splits.t10}s • 30m: {splits.t30}s • 60m: {splits.t60}s</strong>
+                  <span className="text-slate-400 block">60m Training Paces</span>
+                  <strong className="text-sky-300">95%: {splits.effort95}s • 90%: {splits.effort90}s • 80%: {splits.effort80}s</strong>
                 </div>
               )}
             </div>
