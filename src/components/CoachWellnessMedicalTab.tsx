@@ -1,139 +1,128 @@
 'use client';
 
 import { useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { getReadinessStatus } from '@/lib/biomechanics';
+import BodyHeatMap from './BodyHeatMap';
+import WellnessDetailModal from './WellnessDetailModal';
+import { HeartPulse, ShieldAlert } from 'lucide-react';
 
 export default function CoachWellnessMedicalTab({
-  coachId,
   athletes,
   wellness,
-  medical,
-  onSaved,
+  injuries = [],
 }: {
-  coachId: string;
   athletes: any[];
   wellness: any[];
-  medical: any[];
-  onSaved: () => void;
+  injuries?: any[];
 }) {
-  const [selectedAthlete, setSelectedAthlete] = useState(athletes[0]?.id || '');
-  const [status, setStatus] = useState<'Fit' | 'Modified Training' | 'Injured'>('Modified Training');
-  const [injuryArea, setInjuryArea] = useState('');
-  const [notes, setNotes] = useState('');
-  const [returnDate, setReturnDate] = useState('');
-  const [saving, setSaving] = useState(false);
+  const [selectedWellnessAthlete, setSelectedWellnessAthlete] = useState<any | null>(null);
 
-  async function handleSaveMedical(e: React.FormEvent) {
-    e.preventDefault();
-    const targetId = selectedAthlete || athletes[0]?.id;
-    if (!targetId || !injuryArea) return;
-    setSaving(true);
-    const { error } = await supabase.from('medical_records').insert({
-      athlete_id: targetId,
-      coach_id: coachId,
-      status,
-      injury_area: injuryArea,
-      physio_notes: notes,
-      expected_return_date: returnDate || null,
-    });
-    if (!error) {
-      setInjuryArea('');
-      setNotes('');
-      setReturnDate('');
-      onSaved();
-    }
-    setSaving(false);
-  }
+  const activeInjuries = injuries.filter((inj) => inj.status !== 'Cleared');
 
   return (
-    <div className="space-y-6">
-      {/* Squad Wellness & Readiness Matrix */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 overflow-x-auto">
-        <h3 className="font-bold text-sm text-emerald-400 mb-3">Squad Wellness & Readiness Matrix (All 5 Metrics + RPE)</h3>
-        <table className="w-full text-xs text-left">
-          <thead className="text-slate-400 border-b border-slate-800">
-            <tr>
-              <th className="py-2">Athlete</th>
-              <th>Date</th>
-              <th>Sleep</th>
-              <th>Fatigue</th>
-              <th>Soreness</th>
-              <th>Stress</th>
-              <th>Mood</th>
-              <th>Score (/50)</th>
-              <th>sRPE Load</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-800">
-            {athletes.map((a) => {
-              const latest = wellness.find((w) => w.athlete_id === a.id);
-              const flagged = latest && (latest.composite_score < 28 || latest.muscle_soreness <= 4);
-              return (
-                <tr key={a.id} className={flagged ? 'bg-rose-950/20' : ''}>
-                  <td className="py-2 font-semibold">{a.full_name}</td>
-                  <td className="text-slate-400">{latest ? latest.log_date : '—'}</td>
-                  <td>{latest ? latest.sleep_quality : '—'}</td>
-                  <td>{latest ? latest.fatigue_level : '—'}</td>
-                  <td className={latest?.muscle_soreness <= 4 ? 'text-rose-400 font-bold' : ''}>{latest ? latest.muscle_soreness : '—'}</td>
-                  <td>{latest ? latest.stress_level : '—'}</td>
-                  <td>{latest ? latest.mood : '—'}</td>
-                  <td className="font-bold text-emerald-400">{latest ? `${latest.composite_score}/50` : 'No Log'}</td>
-                  <td className="text-amber-400">{latest ? `${latest.srpe_load} AU` : '—'}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+    <div className="space-y-6 text-xs">
+      {/* Squad Readiness Heat Map (Clickable Athlete Cards) */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="font-bold text-sm text-emerald-400">
+            Squad Readiness Heat Map (Latest Check-In)
+          </h3>
+          <span className="text-[11px] text-slate-400">
+            Click any athlete card to view full 5-metric breakdown
+          </span>
+        </div>
 
-      {/* Medical & Rehab Hub */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4">
-        <h3 className="font-bold text-sm text-emerald-400">Medical & Rehab Hub</h3>
-        <form onSubmit={handleSaveMedical} className="grid grid-cols-1 sm:grid-cols-5 gap-2 items-end text-xs">
-          <div>
-            <label className="block text-slate-400 mb-1">Athlete</label>
-            <select value={selectedAthlete || athletes[0]?.id || ''} onChange={(e) => setSelectedAthlete(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-2">
-              {athletes.map((a) => <option key={a.id} value={a.id}>{a.full_name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-slate-400 mb-1">Status</label>
-            <select value={status} onChange={(e) => setStatus(e.target.value as any)} className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-2">
-              <option value="Fit">Fit</option>
-              <option value="Modified Training">Modified Training</option>
-              <option value="Injured">Injured</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-slate-400 mb-1">Area / Diagnosis</label>
-            <input required type="text" value={injuryArea} onChange={(e) => setInjuryArea(e.target.value)} placeholder="Left Hamstring" className="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-2" />
-          </div>
-          <div>
-            <label className="block text-slate-400 mb-1">Physio Notes / Return</label>
-            <input type="text" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Eccentric rehab" className="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-2" />
-          </div>
-          <button disabled={saving} type="submit" className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold py-2 rounded">
-            {saving ? 'Saving...' : '+ Log Medical'}
-          </button>
-        </form>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {athletes.map((a) => {
+            const athLogs = wellness
+              .filter((w) => w.athlete_id === a.id)
+              .sort((x, y) => (y.log_date || '').localeCompare(x.log_date || ''));
+            const latest = athLogs.at(0);
+            const status = latest ? getReadinessStatus(latest.composite_score) : null;
 
-        <div className="divide-y divide-slate-800 text-xs">
-          {medical.map((m) => {
-            const ath = athletes.find((a) => a.id === m.athlete_id);
             return (
-              <div key={m.id} className="py-2 flex justify-between items-center">
-                <div>
-                  <span className="font-semibold text-white">{ath?.full_name}</span> • <span className="text-slate-300">{m.injury_area}</span>
-                  {m.physio_notes && <span className="text-slate-400"> — {m.physio_notes}</span>}
+              <div
+                key={a.id}
+                onClick={() => setSelectedWellnessAthlete(a)}
+                className="bg-slate-950 border border-slate-800 hover:border-emerald-500/60 rounded-xl p-3 space-y-1.5 cursor-pointer transition"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <strong className="text-sm text-white hover:text-emerald-300 transition">
+                    {a.full_name}
+                  </strong>
+                  {status ? (
+                    <span className={`px-2 py-0.5 rounded-full border text-[10px] font-bold shrink-0 ${status.color}`}>
+                      {status.label}
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-400 text-[10px] font-semibold shrink-0">
+                      No Check-In
+                    </span>
+                  )}
                 </div>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${m.status === 'Fit' ? 'bg-emerald-500/20 text-emerald-300' : m.status === 'Modified Training' ? 'bg-amber-500/20 text-amber-300' : 'bg-rose-500/20 text-rose-300'}`}>
-                  {m.status}
-                </span>
+
+                {latest ? (
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Date: {latest.log_date} • RPE: {latest.session_rpe ? `${latest.session_rpe}/10` : '/10'} • Pain:{' '}
+                    <span className={latest.pain_location ? 'text-rose-300 font-semibold' : 'text-slate-300'}>
+                      {latest.pain_location || 'None'}
+                    </span>
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-slate-500">No wellness check-ins logged yet.</p>
+                )}
               </div>
             );
           })}
         </div>
       </div>
+
+      {/* Squad Anatomical Injury & Soreness Heat Map */}
+      <BodyHeatMap wellness={wellness} athletes={athletes} />
+
+      {/* Active Medical & Rehab Status */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+        <h3 className="font-bold text-sm text-rose-400 flex items-center gap-1.5">
+          <HeartPulse className="w-4 h-4" /> Active Medical &amp; Rehab Cases ({activeInjuries.length})
+        </h3>
+
+        {activeInjuries.length === 0 ? (
+          <p className="text-slate-400 py-2 flex items-center gap-1.5">
+            <ShieldAlert className="w-4 h-4 text-emerald-400" /> All squad athletes are medically cleared for full training.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {activeInjuries.map((inj) => {
+              const ath = athletes.find((a) => a.id === inj.athlete_id);
+              return (
+                <div
+                  key={inj.id}
+                  className="bg-slate-950 border border-rose-500/40 rounded-xl p-3 space-y-1"
+                >
+                  <div className="flex justify-between items-center gap-2">
+                    <strong className="text-white text-sm">{ath?.full_name || 'Athlete'}</strong>
+                    <span className="px-2 py-0.5 rounded-full bg-rose-950 border border-rose-700 text-rose-300 text-[10px] font-bold">
+                      {inj.status || 'Rehab'}
+                    </span>
+                  </div>
+                  <p className="text-slate-300 font-semibold">{inj.injury_area || inj.diagnosis}</p>
+                  {inj.restrictions && (
+                    <p className="text-[11px] text-amber-300">Restrictions: {inj.restrictions}</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {selectedWellnessAthlete && (
+        <WellnessDetailModal
+          athlete={selectedWellnessAthlete}
+          logs={wellness.filter((w) => w.athlete_id === selectedWellnessAthlete.id)}
+          onClose={() => setSelectedWellnessAthlete(null)}
+        />
+      )}
     </div>
   );
 }
