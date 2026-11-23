@@ -1,125 +1,74 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { getReadinessStatus } from '@/lib/biomechanics';
-import { CheckCircle2, Clock } from 'lucide-react';
+import WellnessDetailModal from './WellnessDetailModal';
+import { HeartPulse, ShieldAlert } from 'lucide-react';
 
-function getLocalTodayIso(): string {
-  const now = new Date();
-  const offsetMs = now.getTimezoneOffset() * 60000;
-  return new Date(now.getTime() - offsetMs).toISOString().slice(0, 10);
-}
+export default function CoachWellnessTab({
+  athletes,
+  wellness,
+  injuries = [],
+}: {
+  athletes: any[];
+  wellness: any[];
+  injuries?: any[];
+}) {
+  const [selectedWellnessAthlete, setSelectedWellnessAthlete] = useState<any | null>(null);
 
-export default function CoachWellnessTab({ athletes, wellness }: { athletes: any[]; wellness: any[] }) {
-  const [selectedId, setSelectedId] = useState(athletes.at(0)?.id || '');
-  const [showMissing, setShowMissing] = useState(false);
-
-  const todayStr = getLocalTodayIso();
-
-  const todayStats = useMemo(() => {
-    const completedIds = new Set(
-      wellness.filter((w) => w.log_date === todayStr).map((w) => w.athlete_id)
-    );
-    const completedAthletes = athletes.filter((a) => completedIds.has(a.id));
-    const missingAthletes = athletes.filter((a) => !completedIds.has(a.id));
-    const pct = athletes.length > 0 ? Math.round((completedAthletes.length / athletes.length) * 100) : 0;
-
-    return {
-      completedCount: completedAthletes.length,
-      totalCount: athletes.length,
-      missingAthletes,
-      pct,
-    };
-  }, [athletes, wellness, todayStr]);
-
-  const athleteLogs = wellness
-    .filter((w) => w.athlete_id === selectedId)
-    .slice(0, 14)
-    .reverse();
+  const activeInjuries = (injuries || []).filter((inj) => inj.status !== 'Cleared');
 
   return (
-    <div className="space-y-6">
-      {/* Today's Daily Wellness Completion Card */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3 text-xs">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
-              <CheckCircle2 className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="font-bold text-sm text-white">
-                Today&apos;s Wellness Check-Ins ({todayStr})
-              </h3>
-              <p className="text-slate-400">
-                <strong className="text-emerald-400 text-sm">{todayStats.completedCount}</strong> of{' '}
-                <strong className="text-white">{todayStats.totalCount}</strong> active athletes completed today ({todayStats.pct}%)
-              </p>
-            </div>
-          </div>
-
-          {todayStats.missingAthletes.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setShowMissing(!showMissing)}
-              className="inline-flex items-center gap-1.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 font-semibold px-3 py-1.5 rounded-lg"
-            >
-              <Clock className="w-3.5 h-3.5" />
-              {showMissing
-                ? 'Hide Missing List'
-                : `${todayStats.missingAthletes.length} Pending Today`}
-            </button>
-          )}
+    <div className="space-y-6 text-xs">
+      {/* Squad Readiness Heat Map (Clickable Athlete Cards) */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="font-bold text-sm text-emerald-400">
+            Squad Readiness Heat Map (Latest Check-In)
+          </h3>
+          <span className="text-[11px] text-slate-400">
+            Tap any athlete card to view full 5-metric breakdown
+          </span>
         </div>
 
-        {/* Progress Bar */}
-        <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-emerald-500 transition-all duration-300"
-            style={{ width: `${todayStats.pct}%` }}
-          />
-        </div>
-
-        {showMissing && todayStats.missingAthletes.length > 0 && (
-          <div className="pt-2 border-t border-slate-800 flex flex-wrap gap-1.5">
-            {todayStats.missingAthletes.map((a) => (
-              <span
-                key={a.id}
-                className="px-2.5 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-300 text-[11px]"
-              >
-                {a.full_name}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Squad Readiness Heat Map */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-        <h3 className="font-bold text-sm text-emerald-400 mb-3">Squad Readiness Heat Map (Latest Check-In)</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {athletes.map((a) => {
-            const latest = wellness.find((w) => w.athlete_id === a.id);
-            const st = getReadinessStatus(latest?.composite_score);
+            const athLogs = wellness
+              .filter((w) => w.athlete_id === a.id)
+              .sort((x, y) => (y.log_date || '').localeCompare(x.log_date || ''));
+            const latest = athLogs.at(0);
+            const status = latest ? getReadinessStatus(latest.composite_score) : null;
+
             return (
               <div
                 key={a.id}
-                onClick={() => setSelectedId(a.id)}
-                className={`cursor-pointer p-3 rounded-xl border transition ${
-                  selectedId === a.id ? 'border-emerald-500 bg-slate-800/80' : 'border-slate-800 bg-slate-950'
-                }`}
+                onClick={() => setSelectedWellnessAthlete(a)}
+                className="bg-slate-950 border border-slate-800 hover:border-emerald-500/60 rounded-xl p-3 space-y-1.5 cursor-pointer transition"
               >
-                <div className="flex justify-between items-center">
-                  <strong className="text-white text-sm">{a.full_name}</strong>
-                  <span className={`px-2 py-0.5 rounded-full border text-[10px] font-semibold ${st.color}`}>
-                    {st.label}
-                  </span>
+                <div className="flex items-start justify-between gap-2">
+                  <strong className="text-sm text-white hover:text-emerald-300 transition">
+                    {a.full_name}
+                  </strong>
+                  {status ? (
+                    <span className={`px-2 py-0.5 rounded-full border text-[10px] font-bold shrink-0 ${status.color}`}>
+                      {status.label}
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-400 text-[10px] font-semibold shrink-0">
+                      No Check-In
+                    </span>
+                  )}
                 </div>
+
                 {latest ? (
-                  <p className="text-slate-400 mt-1.5">
-                    Date: {latest.log_date} • RPE: {latest.session_rpe}/10 • Pain: {latest.pain_location || 'None'}
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Date: {latest.log_date} • RPE: {latest.session_rpe ? `${latest.session_rpe}/10` : '/10'} • Pain:{' '}
+                    <span className={latest.pain_location ? 'text-rose-300 font-semibold' : 'text-slate-300'}>
+                      {latest.pain_location || 'None'}
+                    </span>
                   </p>
                 ) : (
-                  <p className="text-slate-500 mt-1.5">No wellness check-ins logged yet.</p>
+                  <p className="text-[11px] text-slate-500">No wellness check-ins logged yet.</p>
                 )}
               </div>
             );
@@ -127,53 +76,44 @@ export default function CoachWellnessTab({ athletes, wellness }: { athletes: any
         </div>
       </div>
 
-      {/* 14-Day Wellness Trend Graph */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
-        <div className="flex flex-wrap justify-between items-center gap-2">
-          <h4 className="font-bold text-sm text-emerald-400">14-Day Wellness &amp; Fatigue Trend</h4>
-          <select
-            value={selectedId}
-            onChange={(e) => setSelectedId(e.target.value)}
-            className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs"
-          >
-            {athletes.map((a) => (
-              <option key={a.id} value={a.id}>{a.full_name}</option>
-            ))}
-          </select>
-        </div>
-
-        {athleteLogs.length === 0 ? (
-          <p className="text-xs text-slate-500 py-6 text-center">No wellness history for this athlete yet.</p>
-        ) : (
-          <svg viewBox="0 0 600 160" className="w-full h-44 bg-slate-950 rounded-lg p-2">
-            {athleteLogs.length > 1 && (
-              <polyline
-                fill="none"
-                stroke="#38bdf8"
-                strokeWidth="2.5"
-                points={athleteLogs
-                  .map((l, i) => {
-                    const x = 35 + (i / (athleteLogs.length - 1)) * 530;
-                    const y = 135 - (l.composite_score / 50) * 110;
-                    return `${x},${y}`;
-                  })
-                  .join(' ')}
-              />
-            )}
-            {athleteLogs.map((l, i) => {
-              const x = athleteLogs.length === 1 ? 300 : 35 + (i / (athleteLogs.length - 1)) * 530;
-              const y = 135 - (l.composite_score / 50) * 110;
+      {/* Active Medical & Rehab Cases */}
+      {activeInjuries.length > 0 && (
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+          <h3 className="font-bold text-sm text-rose-400 flex items-center gap-1.5">
+            <HeartPulse className="w-4 h-4" /> Active Medical &amp; Rehab Cases ({activeInjuries.length})
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {activeInjuries.map((inj) => {
+              const ath = athletes.find((a) => a.id === inj.athlete_id);
               return (
-                <g key={l.id}>
-                  <circle cx={x} cy={y} r="4" fill="#34d399" />
-                  <text x={x} y={y - 8} fontSize="8.5" fill="#f8fafc" textAnchor="middle">{l.composite_score}</text>
-                  <text x={x} y={150} fontSize="8" fill="#94a3b8" textAnchor="middle">{l.log_date.slice(5)}</text>
-                </g>
+                <div
+                  key={inj.id}
+                  className="bg-slate-950 border border-rose-500/40 rounded-xl p-3 space-y-1"
+                >
+                  <div className="flex justify-between items-center gap-2">
+                    <strong className="text-white text-sm">{ath?.full_name || 'Athlete'}</strong>
+                    <span className="px-2 py-0.5 rounded-full bg-rose-950 border border-rose-700 text-rose-300 text-[10px] font-bold">
+                      {inj.status || 'Rehab'}
+                    </span>
+                  </div>
+                  <p className="text-slate-300 font-semibold">{inj.injury_area || inj.diagnosis}</p>
+                  {inj.restrictions && (
+                    <p className="text-[11px] text-amber-300">Restrictions: {inj.restrictions}</p>
+                  )}
+                </div>
               );
             })}
-          </svg>
-        )}
-      </div>
+          </div>
+        </div>
+      )}
+
+      {selectedWellnessAthlete && (
+        <WellnessDetailModal
+          athlete={selectedWellnessAthlete}
+          logs={wellness.filter((w) => w.athlete_id === selectedWellnessAthlete.id)}
+          onClose={() => setSelectedWellnessAthlete(null)}
+        />
+      )}
     </div>
   );
 }
