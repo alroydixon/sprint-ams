@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { getReadinessStatus } from '@/lib/biomechanics';
-import BodyHeatMap from './BodyHeatMap';
 import WellnessDetailModal from './WellnessDetailModal';
 import { HeartPulse, ShieldAlert } from 'lucide-react';
 
@@ -76,9 +75,6 @@ export default function CoachWellnessMedicalTab({
           })}
         </div>
       </div>
-
-      {/* Squad Anatomical Injury & Soreness Heat Map */}
-      <BodyHeatMap wellness={wellness} athletes={athletes} />
 
       {/* Active Medical & Rehab Status */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
