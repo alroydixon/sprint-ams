@@ -13,15 +13,20 @@ interface RunRow {
 
 export default function AthleteTrainingTab({
   athleteId,
+  discipline = 'sprints',
   sessions,
+  races = [],
   tests,
   onSaved,
 }: {
   athleteId: string;
+  discipline?: string | null;
   sessions: any[];
+  races?: any[];
   tests: any[];
   onSaved: () => void;
 }) {
+
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().slice(0, 10));
   const [sessionType, setSessionType] = useState('Track Sprints');
   const [sessionRpe, setSessionRpe] = useState(7);
