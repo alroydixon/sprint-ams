@@ -144,8 +144,9 @@ export default function CoachSquadTab({
       />
 
       {selectedAthlete && (
-        <CoachAthleteModal
+                <CoachAthleteModal
           athlete={selectedAthlete}
+          discipline={discipline}
           races={races.filter((r) => r.athlete_id === selectedAthlete.id)}
           tests={tests.filter((t) => t.athlete_id === selectedAthlete.id)}
           sessions={sessions.filter((s) => s.athlete_id === selectedAthlete.id)}
