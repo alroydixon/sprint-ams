@@ -119,7 +119,7 @@ export default function MedicalDashboardPage() {
     return records.filter((r) => ids.has(r.athlete_id));
   }, [records, filteredAthletes]);
 
-    const activeRtpAthletes = useMemo(() => {
+  const activeRtpAthletes = useMemo(() => {
     const activeIds = new Set(
       filteredRecords
         .filter((r) => r.status !== 'Cleared' && Number(r.rtp_stage) !== 5)
@@ -157,7 +157,7 @@ export default function MedicalDashboardPage() {
                 {profile?.full_name || 'Medical Staff'} • Sports Medicine &amp; Rehab Portal
               </h1>
               <p className="text-slate-400">
-                {profile?.specialty || 'Sports Physician / Physiotherapist'} • {activeTabLabel} ({filteredAthletes.length} Athletes)
+                {profile?.specialty || 'Sports Physician / Physiotherapist'} • {activeTabLabel} ({activeRtpAthletes.length} Active RTP)
               </p>
             </div>
           </div>
@@ -227,12 +227,10 @@ export default function MedicalDashboardPage() {
           />
         )}
 
-                <MedicalWellnessRpeMonitor
+        <MedicalWellnessRpeMonitor
           athletes={activeRtpAthletes}
           wellness={wellness}
           sessions={sessions}
-        />
-}
         />
       </div>
     </div>
