@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { formatMark, parseMarkInput } from '@/lib/disciplines';
 import AthleteEventChartCard from './AthleteEventChartCard';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, TrendingUp } from 'lucide-react';
 
 export default function CoachAthleteRacesSection({
   athleteId,
@@ -27,12 +27,28 @@ export default function CoachAthleteRacesSection({
   const [newMeet, setNewMeet] = useState('');
   const [newWind, setNewWind] = useState('');
   const [addingRace, setAddingRace] = useState(false);
+  const [chartEventFilter, setChartEventFilter] = useState<string>('ALL');
 
   const wellnessByDate = useMemo(() => {
     const map = new Map<string, any>();
     wellness.forEach((w) => map.set(w.log_date, w));
     return map;
   }, [wellness]);
+
+  // Include all discipline events plus any extra logged events for this athlete
+  const availableChartEvents = useMemo(() => {
+    const loggedSet = new Set(races.map((r) => r.event).filter(Boolean));
+    const ordered = events.filter((ev) => loggedSet.has(ev));
+    loggedSet.forEach((ev) => {
+      if (!ordered.includes(ev)) ordered.push(ev);
+    });
+    return ordered.length > 0 ? ordered : events;
+  }, [events, races]);
+
+  const visibleChartEvents =
+    chartEventFilter === 'ALL'
+      ? availableChartEvents
+      : availableChartEvents.filter((ev) => ev === chartEventFilter);
 
   async function addRaceResult(e: React.FormEvent) {
     e.preventDefault();
@@ -79,7 +95,41 @@ export default function CoachAthleteRacesSection({
         </button>
       </form>
 
-      {events.slice(0, 2).map((ev) => (
+      {/* Interactive Event Progression Chart Selector */}
+      <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 flex flex-wrap items-center justify-between gap-2">
+        <span className="font-bold text-emerald-400 flex items-center gap-1.5">
+          <TrendingUp className="w-4 h-4" /> Progression Charts ({visibleChartEvents.length})
+        </span>
+        <div className="flex flex-wrap gap-1">
+          <button
+            type="button"
+            onClick={() => setChartEventFilter('ALL')}
+            className={`px-2.5 py-1 rounded-md font-bold transition ${
+              chartEventFilter === 'ALL'
+                ? 'bg-emerald-500 text-slate-950'
+                : 'bg-slate-800 text-slate-300 hover:text-white'
+            }`}
+          >
+            All Events ({availableChartEvents.length})
+          </button>
+          {availableChartEvents.map((ev) => (
+            <button
+              key={ev}
+              type="button"
+              onClick={() => setChartEventFilter(ev)}
+              className={`px-2.5 py-1 rounded-md font-bold transition ${
+                chartEventFilter === ev
+                  ? 'bg-emerald-500 text-slate-950'
+                  : 'bg-slate-800 text-slate-300 hover:text-white'
+              }`}
+            >
+              {ev}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {visibleChartEvents.map((ev) => (
         <AthleteEventChartCard
           key={ev}
           event={ev}
