@@ -88,7 +88,7 @@ export function calculateApePoints(
     ? 1000 + (markValue - calibratedRef) * bench.slope
     : 1000 + (calibratedRef - markValue) * bench.slope;
 
-  const points = Math.max(0, Math.min(1200, Math.round(rawPoints)));
+    const points = Math.max(0, Math.min(1000, Math.round(rawPoints)));
 
   let standardBadge = 'Development';
   if (points >= 900) standardBadge = 'International';
