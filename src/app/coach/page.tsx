@@ -161,7 +161,7 @@ export default function CoachDashboard() {
           </div>
         </div>
 
-        <CoachNavBar tab={tab} onChange={setTab} />
+               <CoachNavBar tab={tab} onChange={setTab} discipline={coach.coaching_discipline} />
 
         {tab === 'squad' && (
           <CoachSquadTab coachId={effectiveCoachId} discipline={coach.coaching_discipline} athletes={athletes} races={filteredRaces} sessions={filteredSessions} tests={filteredTests} wellness={filteredWellness} onSquadUpdated={loadSquadData} />

@@ -19,13 +19,25 @@ const NAV_ITEMS: { id: CoachTab; label: string; Icon: any }[] = [
 export default function CoachNavBar({
   tab,
   onChange,
+  discipline = 'sprints',
 }: {
   tab: CoachTab;
   onChange: (next: CoachTab) => void;
+  discipline?: string | null;
 }) {
+  const hideRelays =
+    discipline === 'distance' || discipline === 'jumps' || discipline === 'throws';
+  const visibleItems = hideRelays
+    ? NAV_ITEMS.filter((item) => item.id !== 'relays')
+    : NAV_ITEMS;
+
   return (
-    <div className="grid grid-cols-3 sm:grid-cols-9 gap-1.5 bg-slate-900 p-1.5 rounded-xl border border-slate-800">
-      {NAV_ITEMS.map(({ id, label, Icon }) => (
+    <div
+      className={`grid grid-cols-3 ${
+        hideRelays ? 'sm:grid-cols-8' : 'sm:grid-cols-9'
+      } gap-1.5 bg-slate-900 p-1.5 rounded-xl border border-slate-800`}
+    >
+      {visibleItems.map(({ id, label, Icon }) => (
         <button
           key={id}
           onClick={() => onChange(id)}
