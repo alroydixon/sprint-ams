@@ -166,7 +166,7 @@ export default function CoachDashboard() {
         {tab === 'squad' && (
           <CoachSquadTab coachId={effectiveCoachId} discipline={coach.coaching_discipline} athletes={athletes} races={filteredRaces} sessions={filteredSessions} tests={filteredTests} wellness={filteredWellness} onSquadUpdated={loadSquadData} />
         )}
-        {tab === 'wellness' && <CoachWellnessTab athletes={activeAthletes} wellness={filteredWellness} />}
+        {tab === 'wellness' && <CoachWellnessTab athletes={activeAthletes} wellness={wellness} sessions={sessions} injuries={medical} />}
         {tab === 'medical' && (
           <MedicalHubTab coachId={effectiveCoachId} reporterName={`Coach ${coach.full_name}`} isCoach={true} athletes={activeAthletes} medical={medical} onSaved={loadSquadData} />
         )}

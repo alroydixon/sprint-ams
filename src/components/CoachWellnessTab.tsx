@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { getReadinessStatus } from '@/lib/biomechanics';
 import WellnessDetailModal from './WellnessDetailModal';
-import { HeartPulse, ShieldAlert, CheckCircle2, Clock } from 'lucide-react';
+import { HeartPulse, CheckCircle2, Clock } from 'lucide-react';
 
 function getLocalTodayIso(): string {
   const now = new Date();
@@ -14,10 +14,12 @@ function getLocalTodayIso(): string {
 export default function CoachWellnessTab({
   athletes,
   wellness,
+  sessions = [],
   injuries = [],
 }: {
   athletes: any[];
   wellness: any[];
+  sessions?: any[];
   injuries?: any[];
 }) {
   const [selectedWellnessAthlete, setSelectedWellnessAthlete] = useState<any | null>(null);
@@ -66,7 +68,6 @@ export default function CoachWellnessTab({
           )}
         </div>
 
-        {/* Progress Bar */}
         <div className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
           <div
             style={{ width: `${pct}%` }}
@@ -74,7 +75,6 @@ export default function CoachWellnessTab({
           />
         </div>
 
-        {/* Missing Athletes Pills */}
         {showMissing && missingAthletes.length > 0 && (
           <div className="flex flex-wrap gap-1.5 pt-1">
             {missingAthletes.map((a) => (
@@ -110,6 +110,18 @@ export default function CoachWellnessTab({
             const latest = athLogs.at(0);
             const status = latest ? getReadinessStatus(latest.composite_score) : null;
 
+            const athSessions = sessions
+              .filter((s) => s.athlete_id === a.id && Number(s.session_rpe) > 0)
+              .sort((x, y) => (y.session_date || '').localeCompare(x.session_date || ''));
+            const sameDaySession = latest
+              ? athSessions.find((s) => s.session_date === latest.log_date)
+              : null;
+            const resolvedRpe =
+              sameDaySession?.session_rpe ??
+              latest?.session_rpe ??
+              athSessions.at(0)?.session_rpe ??
+              null;
+
             return (
               <div
                 key={a.id}
@@ -133,7 +145,11 @@ export default function CoachWellnessTab({
 
                 {latest ? (
                   <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Date: {latest.log_date} • RPE: {latest.session_rpe ? `${latest.session_rpe}/10` : '/10'} • Pain:{' '}
+                    Date: {latest.log_date} • RPE:{' '}
+                    <span className={resolvedRpe ? 'text-amber-300 font-semibold' : ''}>
+                      {resolvedRpe ? `${resolvedRpe}/10` : '—'}
+                    </span>{' '}
+                    • Pain:{' '}
                     <span className={latest.pain_location ? 'text-rose-300 font-semibold' : 'text-slate-300'}>
                       {latest.pain_location || 'None'}
                     </span>
