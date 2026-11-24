@@ -1,7 +1,7 @@
 'use client';
 
 import { calculatePower, getReadinessStatus } from '@/lib/biomechanics';
-import { getPrimaryEvents, formatMark, isBetterMark } from '@/lib/disciplines';
+import { getEventsForDiscipline, formatMark, isBetterMark } from '@/lib/disciplines';
 import { FileText, Link2, Check, EyeOff } from 'lucide-react';
 
 export default function SquadRosterTable({
@@ -29,16 +29,21 @@ export default function SquadRosterTable({
   onCopyInvite: (athlete: any) => void;
   onToggleArchive: (athlete: any) => void;
 }) {
-  const primaryEvents = getPrimaryEvents(discipline).slice(0, 2);
+  const allEvents = getEventsForDiscipline(discipline);
+  const primaryEvents =
+    allEvents.includes('100m') && allEvents.includes('200m')
+      ? ['100m', '200m']
+      : allEvents.slice(0, 2);
   const currentYear = String(new Date().getFullYear());
 
   function getBestAndSb(athRaces: any[], eventName: string) {
     const evRaces = athRaces.filter(
       (r) => r.event === eventName && Number(r.time_seconds) > 0
     );
-    if (evRaces.length === 0) return { pb: null, sb: null };
+    const firstRace = evRaces.at(0);
+    if (!firstRace) return { pb: null, sb: null };
 
-    let pb = Number(evRaces[0].time_seconds);
+    let pb = Number(firstRace.time_seconds);
     let sb: number | null = null;
 
     evRaces.forEach((r) => {
@@ -76,12 +81,12 @@ export default function SquadRosterTable({
               .filter((w) => w.athlete_id === a.id)
               .sort((x, y) => (y.log_date || '').localeCompare(x.log_date || ''));
 
-            const latestWellness = athWellness[0];
+            const latestWellness = athWellness.at(0);
             const readiness = latestWellness
               ? getReadinessStatus(latestWellness.composite_score)
               : null;
 
-            const latestTest = athTests[athTests.length - 1];
+            const latestTest = athTests.at(-1);
             const pwr = latestTest
               ? calculatePower(
                   Number(latestTest.body_weight_kg),
@@ -105,7 +110,7 @@ export default function SquadRosterTable({
 
             const initials = (a.full_name || 'A')
               .split(' ')
-              .map((p: string) => p[0])
+              .map((p: string) => p.charAt(0))
               .slice(0, 2)
               .join('')
               .toUpperCase();
