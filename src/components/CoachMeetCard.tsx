@@ -4,6 +4,14 @@ import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Calendar, MapPin, Trash2, Copy, Check, UserPlus } from 'lucide-react';
 
+function normalizeEventsList(raw: any): string[] {
+  if (Array.isArray(raw)) return raw.map((s) => String(s).trim()).filter(Boolean);
+  return String(raw || '')
+    .split(/[,/&]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 export default function CoachMeetCard({
   meet,
   meetEntries,
@@ -37,7 +45,10 @@ export default function CoachMeetCard({
       return;
     }
     if (selectedEvents.length === 0) {
-      setFeedback({ type: 'err', text: 'Please tap at least one event pill (e.g. 100m, 200m) before clicking Enter Athlete.' });
+      setFeedback({
+        type: 'err',
+        text: 'Please tap at least one event pill (e.g. 100m, 200m) before clicking Enter Athlete.',
+      });
       return;
     }
 
@@ -45,16 +56,13 @@ export default function CoachMeetCard({
     const existing = meetEntries.find((ent) => ent.athlete_id === selectedAthlete);
 
     if (existing) {
-      const prevEvents = String(existing.events || '')
-        .split(/[,/&]+/)
-        .map((s) => s.trim())
-        .filter(Boolean);
-      const mergedEvents = Array.from(new Set([...prevEvents, ...selectedEvents])).join(', ');
+      const prevEvents = normalizeEventsList(existing.events);
+      const mergedArray = Array.from(new Set([...prevEvents, ...selectedEvents]));
       const mergedNotes = entryNote.trim() || existing.notes || null;
 
       const { error } = await supabase
         .from('meet_entries')
-        .update({ events: mergedEvents, notes: mergedNotes })
+        .update({ events: mergedArray, notes: mergedNotes })
         .eq('id', existing.id);
 
       setSubmitting(false);
@@ -62,12 +70,12 @@ export default function CoachMeetCard({
         setFeedback({ type: 'err', text: `Could not update entry: ${error.message}` });
         return;
       }
-      setFeedback({ type: 'ok', text: `✓ Updated athlete events to: ${mergedEvents}` });
+      setFeedback({ type: 'ok', text: `✓ Updated athlete events to: ${mergedArray.join(', ')}` });
     } else {
       const { error } = await supabase.from('meet_entries').insert({
         meet_id: meet.id,
         athlete_id: selectedAthlete,
-        events: selectedEvents.join(', '),
+        events: selectedEvents,
         notes: entryNote.trim() || null,
       });
 
@@ -104,7 +112,8 @@ export default function CoachMeetCard({
       ...meetEntries.map((ent, idx) => {
         const ath = athletes.find((a) => a.id === ent.athlete_id);
         const name = ath ? `${ath.full_name} (${ath.grade || ''})` : 'Athlete';
-        return `${idx + 1}. ${name}: ${ent.events}${ent.notes ? ` — ${ent.notes}` : ''}`;
+        const evStr = normalizeEventsList(ent.events).join(', ');
+        return `${idx + 1}. ${name}: ${evStr}${ent.notes ? ` — ${ent.notes}` : ''}`;
       }),
     ].filter(Boolean);
 
@@ -220,6 +229,7 @@ export default function CoachMeetCard({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {meetEntries.map((ent) => {
             const ath = athletes.find((a) => a.id === ent.athlete_id);
+            const evDisplay = normalizeEventsList(ent.events).join(', ');
             return (
               <div
                 key={ent.id}
@@ -227,7 +237,7 @@ export default function CoachMeetCard({
               >
                 <div>
                   <strong className="text-white">{ath?.full_name || 'Athlete'}</strong>
-                  <span className="text-emerald-400 font-bold ml-2">{ent.events}</span>
+                  <span className="text-emerald-400 font-bold ml-2">{evDisplay}</span>
                   {ent.notes && <span className="text-slate-400 block text-[11px]">{ent.notes}</span>}
                 </div>
                 <button type="button" onClick={() => removeEntry(ent.id)} className="text-rose-400 hover:text-rose-300 p-1">
