@@ -170,15 +170,15 @@ export default function ManagerDisciplineOverview({
         />
       )}
 
-      {inspectAthlete && (
+            {inspectAthlete && (
         <ManagerAthleteReadOnlyModal
           athlete={inspectAthlete}
           discipline={discipline}
           races={races.filter((r) => r.athlete_id === inspectAthlete.id)}
-          wellness={wellness.filter((w) => w.athlete_id === inspectAthlete.id)}
           onClose={() => setInspectAthlete(null)}
         />
       )}
+
     </div>
   );
 }
