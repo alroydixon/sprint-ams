@@ -3,7 +3,13 @@
 import { useState } from 'react';
 import { getReadinessStatus } from '@/lib/biomechanics';
 import WellnessDetailModal from './WellnessDetailModal';
-import { HeartPulse, ShieldAlert } from 'lucide-react';
+import { HeartPulse, ShieldAlert, CheckCircle2, Clock } from 'lucide-react';
+
+function getLocalTodayIso(): string {
+  const now = new Date();
+  const offsetMs = now.getTimezoneOffset() * 60000;
+  return new Date(now.getTime() - offsetMs).toISOString().slice(0, 10);
+}
 
 export default function CoachWellnessTab({
   athletes,
@@ -15,11 +21,76 @@ export default function CoachWellnessTab({
   injuries?: any[];
 }) {
   const [selectedWellnessAthlete, setSelectedWellnessAthlete] = useState<any | null>(null);
+  const [showMissing, setShowMissing] = useState(true);
+
+  const todayIso = getLocalTodayIso();
+  const activeAthletes = athletes.filter((a) => !a.is_archived);
+  const submittedIds = new Set(
+    wellness.filter((w) => w.log_date === todayIso).map((w) => w.athlete_id)
+  );
+  const completedCount = activeAthletes.filter((a) => submittedIds.has(a.id)).length;
+  const missingAthletes = activeAthletes.filter((a) => !submittedIds.has(a.id));
+  const pct = activeAthletes.length > 0 ? Math.round((completedCount / activeAthletes.length) * 100) : 0;
 
   const activeInjuries = (injuries || []).filter((inj) => inj.status !== 'Cleared');
 
   return (
     <div className="space-y-6 text-xs">
+      {/* Today's Wellness Check-Ins Progress & Missing List */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-start gap-2.5">
+            <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-sm text-white">
+                Today&apos;s Wellness Check-Ins ({todayIso})
+              </h3>
+              <p className="text-slate-400 mt-0.5">
+                <strong className="text-emerald-400">{completedCount}</strong> of{' '}
+                <strong className="text-white">{activeAthletes.length}</strong> active athletes completed today ({pct}%)
+              </p>
+            </div>
+          </div>
+
+          {missingAthletes.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowMissing(!showMissing)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-950/50 border border-amber-500/40 text-amber-300 font-semibold hover:bg-amber-950/80 transition"
+            >
+              <Clock className="w-3.5 h-3.5" />
+              {showMissing ? 'Hide Missing List' : `Show Missing List (${missingAthletes.length})`}
+            </button>
+          )}
+        </div>
+
+        {/* Progress Bar */}
+        <div className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
+          <div
+            style={{ width: `${pct}%` }}
+            className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+          />
+        </div>
+
+        {/* Missing Athletes Pills */}
+        {showMissing && missingAthletes.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {missingAthletes.map((a) => (
+              <button
+                key={a.id}
+                type="button"
+                onClick={() => setSelectedWellnessAthlete(a)}
+                className="px-2.5 py-1 rounded-full bg-slate-950 border border-slate-700 hover:border-amber-400/60 text-slate-200 font-medium transition"
+              >
+                {a.full_name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Squad Readiness Heat Map (Clickable Athlete Cards) */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
