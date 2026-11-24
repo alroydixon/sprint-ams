@@ -18,9 +18,7 @@ export async function importSquadRows(previewRows: any[], existingAthletes: any[
   let insertedRecords = 0;
   let lastError = '';
 
-  const testBatch: any[] = [];
   const raceMap = new Map<string, any>();
-  const wellnessMap = new Map<string, any>();
   const matchedEvents = new Set<string>();
 
   let lastKnownDate = new Date().toISOString().slice(0, 10);
@@ -88,8 +86,35 @@ export async function importSquadRows(previewRows: any[], existingAthletes: any[
     const windKey = keys.find((k) => k.trim().toLowerCase().includes('wind'));
     const windVal = windKey ? parseNum(row[windKey]) : NaN;
 
-    const eventColKey = keys.find((k) => ['event', 'race event', 'discipline', 'distance'].includes(k.trim().toLowerCase()));
-    const timeColKey = keys.find((k) => ['time', 'race time', 'result', 'performance', 'time (s)', 'seconds'].includes(k.trim().toLowerCase()));
+    const eventColKey = keys.find((k) =>
+      ['event', 'race event', 'discipline', 'distance'].includes(k.trim().toLowerCase())
+    );
+    const timeColKey =
+      keys.find((k) =>
+        [
+          'time',
+          'race time',
+          'result',
+          'performance',
+          'time (s)',
+          'seconds',
+          'mark',
+          'height/distance jumped',
+          'distance jumped',
+          'height jumped',
+          'distance thrown',
+          'jump',
+          'throw',
+          'distance',
+        ].includes(k.trim().toLowerCase())
+      ) ||
+      keys.find(
+        (k) =>
+          k.toLowerCase().includes('jumped') ||
+          k.toLowerCase().includes('thrown') ||
+          k.toLowerCase().includes('mark') ||
+          k.toLowerCase().includes('result')
+      );
 
     if (eventColKey && timeColKey && row[eventColKey] && row[timeColKey]) {
       const evCode = normalizeEventCode(String(row[eventColKey]));
@@ -139,5 +164,5 @@ export async function importSquadRows(previewRows: any[], existingAthletes: any[
   }
 
   const eventsList = Array.from(matchedEvents).join(', ') || 'None';
-  return `Done! Parsed ${previewRows.length} rows → Saved ${insertedRecords} records (${raceBatch.length} races across: ${eventsList}).${lastError ? ` (Error: ${lastError})` : ''}`;
+  return `Done! Parsed ${previewRows.length} rows → Saved ${insertedRecords} records (${raceBatch.length} results across: ${eventsList}).${lastError ? ` (Error: ${lastError})` : ''}`;
 }

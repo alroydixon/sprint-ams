@@ -60,15 +60,15 @@ export function normalizeEventCode(rawHeaderOrValue: string): string | null {
   if (h.startsWith('5000m') || h === '5000') return '5000m';
   if (h.startsWith('10000m') || h === '10000') return '10000m';
 
-  // Jumps & Throws
-  if (h.includes('longjump') || h === 'lj') return 'Long Jump';
-  if (h.includes('triplejump') || h === 'tj') return 'Triple Jump';
-  if (h.includes('highjump') || h === 'hj') return 'High Jump';
-  if (h.includes('polevault') || h === 'pv') return 'Pole Vault';
-  if (h.includes('shotput') || h === 'sp') return 'Shot Put';
-  if (h.includes('discus')) return 'Discus';
-  if (h.includes('javelin')) return 'Javelin';
-  if (h.includes('hammer')) return 'Hammer Throw';
+  // Jumps & Throws (English + Afrikaans)
+  if (h.includes('longjump') || h.includes('verspring') || h === 'lj') return 'Long Jump';
+  if (h.includes('triplejump') || h.includes('driesprong') || h === 'tj') return 'Triple Jump';
+  if (h.includes('highjump') || h.includes('hoogspring') || h === 'hj') return 'High Jump';
+  if (h.includes('polevault') || h.includes('paalspring') || h === 'pv') return 'Pole Vault';
+  if (h.includes('shotput') || h.includes('gewigstoot') || h === 'sp') return 'Shot Put';
+  if (h.includes('discus') || h.includes('diskus')) return 'Discus';
+  if (h.includes('javelin') || h.includes('spiesgooi')) return 'Javelin';
+  if (h.includes('hammer') || h.includes('hamergooi')) return 'Hammer Throw';
 
   return null;
 }
@@ -108,6 +108,12 @@ export function parseRaceMark(raw: any): number {
 export function parseFlexibleDate(raw: string): string | null {
   let clean = raw.trim().replace(/\s*\/\s*/g, '/');
   if (!clean || /^\d{4}$/.test(clean)) return null;
+
+  // Handle short M/D dates like "1/23" or "1/24"
+  if (/^\d{1,2}\/\d{1,2}$/.test(clean)) {
+    const [m, d] = clean.split('/');
+    return `2025-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  }
 
   // Handle multi-day ranges like "27-28/02/2026" or "02-04/04/2026"
   clean = clean.replace(/^(\d{1,2})-\d{1,2}\//, '$1/');
