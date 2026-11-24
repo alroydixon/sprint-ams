@@ -25,9 +25,9 @@ export default function SquadRosterTable({
   wellness: any[];
   copiedId: string | null;
   onSelectAthlete: (athlete: any) => void;
-  onOpenPassport: (athlete: any) => void;
-  onCopyInvite: (athlete: any) => void;
-  onToggleArchive: (athlete: any) => void;
+  onOpenPassport: (athlete: any, e?: any) => void;
+  onCopyInvite: (athlete: any, e?: any) => void;
+  onToggleArchive: (athlete: any, e?: any) => void;
 }) {
   const allEvents = getEventsForDiscipline(discipline);
   const primaryEvents =
@@ -182,7 +182,7 @@ export default function SquadRosterTable({
                   <div className="inline-flex items-center gap-1.5">
                     <button
                       type="button"
-                      onClick={() => onOpenPassport(a)}
+                      onClick={(e) => onOpenPassport(a, e)}
                       className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-950/60 border border-amber-500/40 text-amber-300 hover:bg-amber-950 font-semibold"
                     >
                       <FileText className="w-3 h-3" /> Passport
@@ -195,7 +195,7 @@ export default function SquadRosterTable({
                     ) : (
                       <button
                         type="button"
-                        onClick={() => onCopyInvite(a)}
+                        onClick={(e) => onCopyInvite(a, e)}
                         className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-800 border border-slate-700 text-slate-200 hover:text-white font-semibold"
                       >
                         {copiedId === a.id ? (
@@ -212,7 +212,7 @@ export default function SquadRosterTable({
 
                     <button
                       type="button"
-                      onClick={() => onToggleArchive(a)}
+                      onClick={(e) => onToggleArchive(a, e)}
                       className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white"
                     >
                       <EyeOff className="w-3 h-3" /> Hide
