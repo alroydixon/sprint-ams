@@ -3,8 +3,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import MedicalHubTab from '@/components/MedicalHubTab';
 import MedicalWellnessRpeMonitor from '@/components/MedicalWellnessRpeMonitor';
-import MedicalRecordsSection from '@/components/MedicalRecordsSection';
 import { HeartPulse, LogOut } from 'lucide-react';
 
 const DISCIPLINE_TABS = [
@@ -122,7 +122,7 @@ export default function MedicalDashboardPage() {
   const activeRtpAthletes = useMemo(() => {
     const activeIds = new Set(
       filteredRecords
-        .filter((r) => r.status !== 'Cleared' && Number(r.rtp_stage) !== 5)
+        .filter((r) => r.status !== 'Cleared' && Number(r.rtp_stage ?? r.stage) !== 5)
         .map((r) => r.athlete_id)
     );
     return filteredAthletes.filter((a) => activeIds.has(a.id));
@@ -180,7 +180,10 @@ export default function MedicalDashboardPage() {
               ).map((a) => a.id)
             );
             const activeCaseCount = records.filter(
-              (r) => tabAthIds.has(r.athlete_id) && r.status !== 'Cleared' && Number(r.rtp_stage) !== 5
+              (r) =>
+                tabAthIds.has(r.athlete_id) &&
+                r.status !== 'Cleared' &&
+                Number(r.rtp_stage ?? r.stage) !== 5
             ).length;
 
             return (
@@ -218,12 +221,13 @@ export default function MedicalDashboardPage() {
         )}
 
         {profile && (
-          <MedicalRecordsSection
-            medicalStaffId={profile.id}
+          <MedicalHubTab
+            coachId={profile.coach_id}
+            reporterName={profile.full_name || 'Medical Staff'}
+            isCoach={false}
             athletes={filteredAthletes}
-            records={filteredRecords}
-            activeDisciplineLabel={activeTabLabel}
-            onChanged={loadDashboard}
+            medical={filteredRecords}
+            onSaved={loadDashboard}
           />
         )}
 
