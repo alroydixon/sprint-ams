@@ -1,7 +1,7 @@
 'use client';
 
 import { calculatePower, getReadinessStatus } from '@/lib/biomechanics';
-import { getEventsForDiscipline, formatMark, isBetterMark } from '@/lib/disciplines';
+import { getPrimaryHeadlineEvents, formatMark, isBetterMark } from '@/lib/disciplines';
 import { FileText, Link2, Check, EyeOff, RotateCcw } from 'lucide-react';
 
 export default function SquadRosterTable({

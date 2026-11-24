@@ -10,11 +10,14 @@ export const DISCIPLINE_OPTIONS: { id: CoachingDiscipline; label: string; descri
 ];
 
 export const DISTANCE_EVENTS = [
+  '400m',
   '600m',
   '800m',
   '1000m',
+  '1200m',
   '1500m',
   '1 Mile',
+  '2000m',
   '3000m',
   '5000m',
   '10000m',
@@ -22,6 +25,7 @@ export const DISTANCE_EVENTS = [
   '2000mSC',
   '3000mSC',
 ];
+
 
 export const JUMP_EVENTS = ['Long Jump', 'Triple Jump', 'High Jump', 'Pole Vault'];
 
