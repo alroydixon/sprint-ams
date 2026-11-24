@@ -11,6 +11,7 @@ export function normalizeAthleteAlias(rawName: string): string {
   if (low === 'emmoray van wyk') return 'Emmorray Van Wyk';
   if (low === 'mandraunique willems') return 'Mandraunique Williams';
   if (low === 'mickalya fritz') return 'Mikyla Fritz';
+  if (low === 'lane vd westhuizen') return 'Lene vd Westhuizen';
   return clean;
 }
 
@@ -105,34 +106,47 @@ export function parseRaceMark(raw: any): number {
   return parseFloat(s.replace(',', '.'));
 }
 
+function buildValidIso(yrNum: number, mNum: number, dNum: number): string | null {
+  if (isNaN(yrNum) || isNaN(mNum) || isNaN(dNum)) return null;
+  const fullYr = yrNum < 100 ? 2000 + yrNum : yrNum;
+  if (fullYr < 1990 || fullYr > 2100 || mNum < 1 || mNum > 12 || dNum < 1 || dNum > 31) {
+    return null;
+  }
+  return `${String(fullYr)}-${String(mNum).padStart(2, '0')}-${String(dNum).padStart(2, '0')}`;
+}
+
 export function parseFlexibleDate(raw: string): string | null {
   let clean = raw.trim().replace(/\s*\/\s*/g, '/');
   if (!clean || /^\d{4}$/.test(clean)) return null;
 
+  // Handle "26/27/28 March 2026" -> "26 March 2026"
+  clean = clean.replace(/^(\d{1,2})(?:\/\d{1,2})+\s+([a-zA-Z]+)/, '$1 $2');
+
   // Handle short M/D dates like "1/23" or "1/24"
   if (/^\d{1,2}\/\d{1,2}$/.test(clean)) {
-    const [m, d] = clean.split('/');
-    return `2025-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    const [m, d] = clean.split('/').map(Number);
+    return buildValidIso(2025, m, d);
   }
 
   // Handle multi-day ranges like "27-28/02/2026" or "02-04/04/2026"
   clean = clean.replace(/^(\d{1,2})-\d{1,2}\//, '$1/');
 
-  if (clean.includes('/')) {
-    const parts = clean.split(' ').at(0)!.split('/');
-    if (parts.length === 3) {
-      if (parts.at(0)!.length === 4) {
-        const [yr, m, d] = parts;
-        return `${yr}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-      }
-      const [p1, p2, yr] = parts;
-      const m = Number(p1) > 12 ? p2 : Number(p2) > 12 ? p1 : p2;
-      const d = Number(p1) > 12 ? p1 : Number(p2) > 12 ? p2 : p1;
-      return `${yr.padStart(4, '20')}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  if (/^\d{1,4}\/\d{1,2}\/\d{1,4}$/.test(clean)) {
+    const parts = clean.split('/');
+    if (parts.at(0)!.length === 4) {
+      return buildValidIso(Number(parts.at(0)), Number(parts.at(1)), Number(parts.at(2)));
     }
+    const p1 = Number(parts.at(0));
+    const p2 = Number(parts.at(1));
+    const yr = Number(parts.at(2));
+    const m = p1 > 12 ? p2 : p2 > 12 ? p1 : p2;
+    const d = p1 > 12 ? p1 : p2 > 12 ? p2 : p1;
+    return buildValidIso(yr, m, d);
   }
 
   const parsed = new Date(clean.replace(/^(\d{1,2})\s*-\s*\d{1,2}\s+/, '$1 '));
-  if (!isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+  if (!isNaN(parsed.getTime())) {
+    return buildValidIso(parsed.getUTCFullYear(), parsed.getUTCMonth() + 1, parsed.getUTCDate());
+  }
   return null;
 }
