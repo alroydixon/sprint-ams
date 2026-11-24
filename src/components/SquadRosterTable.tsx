@@ -2,11 +2,12 @@
 
 import { calculatePower, getReadinessStatus } from '@/lib/biomechanics';
 import { getEventsForDiscipline, formatMark, isBetterMark } from '@/lib/disciplines';
-import { FileText, Link2, Check, EyeOff } from 'lucide-react';
+import { FileText, Link2, Check, EyeOff, RotateCcw } from 'lucide-react';
 
 export default function SquadRosterTable({
   athletes,
   discipline = 'sprints',
+  showHidden = false,
   races,
   sessions,
   tests,
@@ -19,6 +20,7 @@ export default function SquadRosterTable({
 }: {
   athletes: any[];
   discipline?: string | null;
+  showHidden?: boolean;
   races: any[];
   sessions: any[];
   tests: any[];
@@ -215,7 +217,15 @@ export default function SquadRosterTable({
                       onClick={(e) => onToggleArchive(a, e)}
                       className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white"
                     >
-                      <EyeOff className="w-3 h-3" /> Hide
+                      {showHidden ? (
+                        <>
+                          <RotateCcw className="w-3 h-3" /> Restore
+                        </>
+                      ) : (
+                        <>
+                          <EyeOff className="w-3 h-3" /> Hide
+                        </>
+                      )}
                     </button>
                   </div>
                 </td>
