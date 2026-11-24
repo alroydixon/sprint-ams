@@ -21,6 +21,8 @@ export default function CoachMeetCard({
   const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
   const [entryNote, setEntryNote] = useState('');
   const [copied, setCopied] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
   function toggleEvent(ev: string) {
     setSelectedEvents((prev) =>
@@ -29,13 +31,54 @@ export default function CoachMeetCard({
   }
 
   async function addEntry() {
-    if (!selectedAthlete || selectedEvents.length === 0) return;
-    await supabase.from('meet_entries').insert({
-      meet_id: meet.id,
-      athlete_id: selectedAthlete,
-      events: selectedEvents.join(', '),
-      notes: entryNote.trim() || null,
-    });
+    setFeedback(null);
+    if (!selectedAthlete) {
+      setFeedback({ type: 'err', text: 'Please select an athlete from the dropdown first.' });
+      return;
+    }
+    if (selectedEvents.length === 0) {
+      setFeedback({ type: 'err', text: 'Please tap at least one event pill (e.g. 100m, 200m) before clicking Enter Athlete.' });
+      return;
+    }
+
+    setSubmitting(true);
+    const existing = meetEntries.find((ent) => ent.athlete_id === selectedAthlete);
+
+    if (existing) {
+      const prevEvents = String(existing.events || '')
+        .split(/[,/&]+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const mergedEvents = Array.from(new Set([...prevEvents, ...selectedEvents])).join(', ');
+      const mergedNotes = entryNote.trim() || existing.notes || null;
+
+      const { error } = await supabase
+        .from('meet_entries')
+        .update({ events: mergedEvents, notes: mergedNotes })
+        .eq('id', existing.id);
+
+      setSubmitting(false);
+      if (error) {
+        setFeedback({ type: 'err', text: `Could not update entry: ${error.message}` });
+        return;
+      }
+      setFeedback({ type: 'ok', text: `✓ Updated athlete events to: ${mergedEvents}` });
+    } else {
+      const { error } = await supabase.from('meet_entries').insert({
+        meet_id: meet.id,
+        athlete_id: selectedAthlete,
+        events: selectedEvents.join(', '),
+        notes: entryNote.trim() || null,
+      });
+
+      setSubmitting(false);
+      if (error) {
+        setFeedback({ type: 'err', text: `Could not enter athlete: ${error.message}` });
+        return;
+      }
+      setFeedback({ type: 'ok', text: `✓ Athlete added to ${meet.meet_name}!` });
+    }
+
     setSelectedAthlete('');
     setSelectedEvents([]);
     setEntryNote('');
@@ -158,12 +201,19 @@ export default function CoachMeetCard({
           </div>
           <button
             type="button"
+            disabled={submitting}
             onClick={addEntry}
             className="inline-flex items-center gap-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold px-3 py-1.5 rounded-lg"
           >
-            <UserPlus className="w-3.5 h-3.5" /> Enter Athlete
+            <UserPlus className="w-3.5 h-3.5" /> {submitting ? 'Saving...' : 'Enter Athlete'}
           </button>
         </div>
+
+        {feedback && (
+          <p className={`p-2 rounded border font-semibold ${feedback.type === 'ok' ? 'bg-emerald-950/60 border-emerald-700 text-emerald-300' : 'bg-rose-950/60 border-rose-700 text-rose-300'}`}>
+            {feedback.text}
+          </p>
+        )}
       </div>
 
       {meetEntries.length > 0 && (
