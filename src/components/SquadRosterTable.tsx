@@ -31,11 +31,7 @@ export default function SquadRosterTable({
   onCopyInvite: (athlete: any, e?: any) => void;
   onToggleArchive: (athlete: any, e?: any) => void;
 }) {
-  const allEvents = getEventsForDiscipline(discipline);
-  const primaryEvents =
-    allEvents.includes('100m') && allEvents.includes('200m')
-      ? ['100m', '200m']
-      : allEvents.slice(0, 2);
+  const primaryEvents = getPrimaryHeadlineEvents(discipline);
   const currentYear = String(new Date().getFullYear());
 
   function getBestAndSb(athRaces: any[], eventName: string) {
@@ -66,7 +62,7 @@ export default function SquadRosterTable({
           <tr>
             <th className="py-3 px-4">Athlete &amp; Readiness</th>
             <th>Grade</th>
-            {primaryEvents.map((ev) => (
+            {primaryEvents.map((ev: string) => (
               <th key={ev}>{ev} PB / {currentYear} SB</th>
             ))}
             <th>Power (W/kg)</th>
@@ -145,7 +141,7 @@ export default function SquadRosterTable({
 
                 <td className="text-slate-300">{a.grade || '—'}</td>
 
-                {primaryEvents.map((ev) => {
+                {primaryEvents.map((ev: string) => {
                   const { pb, sb } = getBestAndSb(athRaces, ev);
                   return (
                     <td key={ev} className="py-3 font-mono">
