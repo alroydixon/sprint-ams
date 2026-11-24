@@ -20,19 +20,27 @@ export default function ManagerAthletesResultsTable({
   onInspectAthlete: (athlete: any) => void;
 }) {
   const [ev1, ev2] = getPrimaryHeadlineEvents(discipline);
+  const currentYear = String(new Date().getFullYear());
 
-  function getBestMark(athleteId: string, eventName: string): number | null {
+  function getBestAndSb(athleteId: string, eventName: string): { pb: number | null; sb: number | null } {
     const valid = races.filter(
       (r) => r.athlete_id === athleteId && r.event === eventName && Number(r.time_seconds) > 0
     );
     const first = valid.at(0);
-    if (!first) return null;
-    let best = Number(first.time_seconds);
+    if (!first) return { pb: null, sb: null };
+
+    let pb = Number(first.time_seconds);
+    let sb: number | null = null;
+
     valid.forEach((r) => {
       const val = Number(r.time_seconds);
-      if (isBetterMark(val, best, discipline)) best = val;
+      if (isBetterMark(val, pb, discipline)) pb = val;
+      if ((r.race_date || '').startsWith(currentYear)) {
+        if (sb === null || isBetterMark(val, sb, discipline)) sb = val;
+      }
     });
-    return best;
+
+    return { pb, sb };
   }
 
   return (
@@ -43,8 +51,8 @@ export default function ManagerAthletesResultsTable({
             <th className="py-3 px-4">Athlete &amp; Readiness</th>
             <th>Coach</th>
             <th>Grade / Age</th>
-            <th>{ev1} Best</th>
-            <th>{ev2} Best</th>
+            <th>{ev1} PB / {currentYear} SB</th>
+            <th>{ev2} PB / {currentYear} SB</th>
             <th className="text-right px-4">Profile</th>
           </tr>
         </thead>
@@ -53,8 +61,8 @@ export default function ManagerAthletesResultsTable({
             const coach = coaches.find((c) => c.id === a.coach_id);
             const latestW = wellness.find((w) => w.athlete_id === a.id);
             const st = latestW ? getReadinessStatus(latestW.composite_score) : null;
-            const b1 = getBestMark(a.id, ev1);
-            const b2 = getBestMark(a.id, ev2);
+            const m1 = getBestAndSb(a.id, ev1);
+            const m2 = getBestAndSb(a.id, ev2);
 
             return (
               <tr
@@ -80,12 +88,28 @@ export default function ManagerAthletesResultsTable({
                 <td className="text-slate-300">
                   {a.grade || '—'} {a.age ? `• ${a.age}y` : ''}
                 </td>
-                <td className="font-mono font-bold text-emerald-400">
-                  {formatMark(b1, discipline)}
-                </td>
-                <td className="font-mono font-bold text-emerald-400">
-                  {formatMark(b2, discipline)}
-                </td>
+
+                {[m1, m2].map((m, idx) => (
+                  <td key={idx} className="py-3 font-mono">
+                    {m.pb !== null ? (
+                      <div className="leading-tight">
+                        <span className="font-bold text-emerald-400 block">
+                          {formatMark(m.pb, discipline)}
+                        </span>
+                        {m.sb !== null ? (
+                          <span className="text-[10px] text-amber-300 font-semibold block">
+                            {m.sb === m.pb ? 'SB = PB' : `SB: ${formatMark(m.sb, discipline)}`}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-slate-500 block">SB: —</span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-slate-600">—</span>
+                    )}
+                  </td>
+                ))}
+
                 <td className="py-3 px-4 text-right">
                   <button
                     type="button"
