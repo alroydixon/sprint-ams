@@ -119,6 +119,15 @@ export default function MedicalDashboardPage() {
     return records.filter((r) => ids.has(r.athlete_id));
   }, [records, filteredAthletes]);
 
+    const activeRtpAthletes = useMemo(() => {
+    const activeIds = new Set(
+      filteredRecords
+        .filter((r) => r.status !== 'Cleared' && Number(r.rtp_stage) !== 5)
+        .map((r) => r.athlete_id)
+    );
+    return filteredAthletes.filter((a) => activeIds.has(a.id));
+  }, [filteredAthletes, filteredRecords]);
+
   const activeTabLabel =
     DISCIPLINE_TABS.find((t) => t.id === activeTab)?.label || 'All Disciplines';
 
@@ -218,10 +227,12 @@ export default function MedicalDashboardPage() {
           />
         )}
 
-        <MedicalWellnessRpeMonitor
-          athletes={filteredAthletes}
+                <MedicalWellnessRpeMonitor
+          athletes={activeRtpAthletes}
           wellness={wellness}
           sessions={sessions}
+        />
+}
         />
       </div>
     </div>
