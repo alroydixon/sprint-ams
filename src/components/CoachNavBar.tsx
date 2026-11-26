@@ -1,8 +1,8 @@
 'use client';
 
-import { Users, HeartPulse, Stethoscope, CalendarRange, CalendarCheck, Trophy, Award, Zap, FileSpreadsheet } from 'lucide-react';
+import { Users, HeartPulse, Stethoscope, CalendarRange, CalendarCheck, Trophy, Award, Gauge, Zap, FileSpreadsheet } from 'lucide-react';
 
-export type CoachTab = 'squad' | 'wellness' | 'medical' | 'season' | 'meets' | 'records' | 'ape' | 'relays' | 'import';
+export type CoachTab = 'squad' | 'wellness' | 'medical' | 'season' | 'meets' | 'records' | 'ape' | 'force' | 'relays' | 'import';
 
 const NAV_ITEMS: { id: CoachTab; label: string; Icon: any }[] = [
   { id: 'squad', label: 'Squad', Icon: Users },
@@ -12,6 +12,7 @@ const NAV_ITEMS: { id: CoachTab; label: string; Icon: any }[] = [
   { id: 'meets', label: 'Meets', Icon: CalendarCheck },
   { id: 'records', label: 'Records', Icon: Trophy },
   { id: 'ape', label: 'APE Score', Icon: Award },
+  { id: 'force', label: 'Force Lab', Icon: Gauge },
   { id: 'relays', label: 'Relays', Icon: Zap },
   { id: 'import', label: 'Import', Icon: FileSpreadsheet },
 ];
@@ -25,18 +26,23 @@ export default function CoachNavBar({
   onChange: (next: CoachTab) => void;
   discipline?: string | null;
 }) {
-  const hideRelays =
-    discipline === 'distance' || discipline === 'jumps' || discipline === 'throws';
-  const visibleItems = hideRelays
-    ? NAV_ITEMS.filter((item) => item.id !== 'relays')
-    : NAV_ITEMS;
+  const isField = discipline === 'jumps' || discipline === 'throws';
+  const hideRelays = discipline === 'distance' || isField;
+  const visibleItems = NAV_ITEMS.filter((item) => {
+    if (item.id === 'relays' && hideRelays) return false;
+    if (item.id === 'force' && isField) return false;
+    return true;
+  });
+
+  const gridColsClass =
+    visibleItems.length === 8
+      ? 'sm:grid-cols-8'
+      : visibleItems.length === 9
+      ? 'sm:grid-cols-9'
+      : 'sm:grid-cols-10';
 
   return (
-    <div
-      className={`grid grid-cols-3 ${
-        hideRelays ? 'sm:grid-cols-8' : 'sm:grid-cols-9'
-      } gap-1.5 bg-slate-900 p-1.5 rounded-xl border border-slate-800`}
-    >
+    <div className={`grid grid-cols-3 ${gridColsClass} gap-1.5 bg-slate-900 p-1.5 rounded-xl border border-slate-800`}>
       {visibleItems.map(({ id, label, Icon }) => (
         <button
           key={id}

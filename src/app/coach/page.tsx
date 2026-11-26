@@ -14,6 +14,7 @@ import CoachRecordsTab from '@/components/CoachRecordsTab';
 import CoachApeScoreTab from '@/components/CoachApeScoreTab';
 import CoachRelayTab from '@/components/CoachRelayTab';
 import CoachImportExportTab from '@/components/CoachImportExportTab';
+import CoachForcePredictorTab from '@/components/CoachForcePredictorTab';
 import ProfileSettingsModal from '@/components/ProfileSettingsModal';
 import WeeklyDigestModal from '@/components/WeeklyDigestModal';
 import { Calendar } from 'lucide-react';
@@ -178,6 +179,14 @@ export default function CoachDashboard() {
         )}
         {tab === 'records' && <CoachRecordsTab athletes={athletes} races={races} discipline={coach.coaching_discipline} />}
         {tab === 'ape' && <CoachApeScoreTab athletes={activeAthletes} races={filteredRaces} discipline={coach.coaching_discipline} dateFrom={dateFrom} dateTo={dateTo} />}
+             {tab === 'force' && (
+       <CoachForcePredictorTab
+         athletes={activeAthletes}
+         races={races}
+         tests={tests}
+         discipline={coach.coaching_discipline}
+       />
+     )}
         {tab === 'relays' && <CoachRelayTab athletes={activeAthletes} races={races} medical={medical} wellness={wellness} />}
         {tab === 'import' && <CoachImportExportTab athletes={athletes} races={filteredRaces} tests={filteredTests} onImported={loadSquadData} />}
       </main>
