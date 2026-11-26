@@ -1,0 +1,129 @@
+'use client';
+
+import { useState, useMemo, useEffect } from 'react';
+import { calculateHorizontalForce } from '@/lib/biomechanics';
+import { formatMark } from '@/lib/disciplines';
+import { Timer, Zap } from 'lucide-react';
+
+const PRESET_DISTANCES =;
+
+export default function VelocityToTimeCard({
+  defaultDistanceM = 100,
+  defaultVelocityMs = 8.5,
+  effectiveWeightKg,
+  discipline = 'sprints',
+}: {
+  defaultDistanceM?: number;
+  defaultVelocityMs?: number;
+  effectiveWeightKg: number;
+  discipline?: string | null;
+}) {
+  const [distanceInput, setDistanceInput] = useState<string>(String(defaultDistanceM || 100));
+  const [velocityInput, setVelocityInput] = useState<string>(String(defaultVelocityMs || 8.5));
+
+  useEffect(() => {
+    if (defaultDistanceM > 0) setDistanceInput(String(defaultDistanceM));
+  }, [defaultDistanceM]);
+
+  useEffect(() => {
+    if (defaultVelocityMs > 0) setVelocityInput(String(defaultVelocityMs));
+  }, [defaultVelocityMs]);
+
+  const distM = parseFloat(distanceInput);
+  const velMs = parseFloat(velocityInput);
+
+  const result = useMemo(() => {
+    if (!distM || distM <= 0 || !velMs || velMs <= 0 || isNaN(distM) || isNaN(velMs)) return null;
+    const predictedTimeS = +(distM / velMs).toFixed(2);
+    const speedKmh = +(velMs * 3.6).toFixed(1);
+    const force = calculateHorizontalForce(effectiveWeightKg, distM, predictedTimeS);
+    const powerW = force ? +(force.forceN * velMs).toFixed(1) : 0;
+    return { predictedTimeS, speedKmh, force, powerW };
+  }, [distM, velMs, effectiveWeightKg]);
+
+  return (
+    <div className="bg-slate-900 border border-sky-500/30 rounded-xl p-4 space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 className="font-bold text-sm text-sky-400 flex items-center gap-1.5">
+            <Timer className="w-4 h-4" /> Velocity (m/s) &rarr; Predicted Time Calculator
+          </h3>
+          <p className="text-slate-400 mt-0.5">
+            Enter a target velocity in <span className="font-mono text-white">m/s</span> and distance in metres to work back the predicted time and force required
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1">
+          {PRESET_DISTANCES.map((d) => (
+            <button
+              key={d}
+              type="button"
+              onClick={() => setDistanceInput(String(d))}
+              className={`px-2 py-1 rounded-md text-[11px] font-semibold transition ${
+                Number(distanceInput) === d
+                  ? 'bg-sky-500 text-slate-950'
+                  : 'bg-slate-800 text-slate-300 hover:text-white'
+              }`}
+            >
+              {d}m
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+        <div>
+          <label className="text-slate-300 block mb-1 font-bold">Distance (m)</label>
+          <input
+            type="number"
+            step="1"
+            min="1"
+            value={distanceInput}
+            onChange={(e) => setDistanceInput(e.target.value)}
+            placeholder="e.g. 100"
+            className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white font-mono text-sm font-bold"
+          />
+        </div>
+
+        <div>
+          <label className="text-slate-300 block mb-1 font-bold">Input Velocity (m/s)</label>
+          <input
+            type="number"
+            step="0.01"
+            min="0.1"
+            value={velocityInput}
+            onChange={(e) => setVelocityInput(e.target.value)}
+            placeholder="e.g. 9.25"
+            className="w-full bg-slate-950 border border-sky-500/50 rounded-lg p-2.5 text-sky-300 font-mono text-sm font-bold"
+          />
+        </div>
+
+        {result?.force && (
+          <>
+            <div className="bg-slate-950 border border-emerald-500/40 rounded-xl p-3">
+              <span className="text-slate-400 block">Predicted Time ({distM}m)</span>
+              <strong className="text-xl text-emerald-400 font-mono block">
+                {formatMark(result.predictedTimeS, discipline)}
+              </strong>
+              <span className="text-[10px] text-slate-400 font-mono">
+                {result.predictedTimeS.toFixed(2)}s • {result.speedKmh} km/h
+              </span>
+            </div>
+
+            <div className="bg-slate-950 border border-slate-800 rounded-xl p-3">
+              <span className="text-slate-400 block flex items-center gap-1">
+                <Zap className="w-3 h-3 text-amber-400" /> Force &amp; Power ({effectiveWeightKg} kg)
+              </span>
+              <strong className="text-lg text-amber-300 font-mono block">
+                {result.force.forceN} N ({result.force.forcePerKg} N/kg)
+              </strong>
+              <span className="text-[10px] text-sky-300 font-mono">
+                {result.powerW} W ({(result.powerW / effectiveWeightKg).toFixed(2)} W/kg)
+              </span>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

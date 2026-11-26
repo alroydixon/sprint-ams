@@ -5,6 +5,7 @@ import { calculateHorizontalForce } from '@/lib/biomechanics';
 import { formatMark, isFieldDiscipline } from '@/lib/disciplines';
 import RaceForceMetricsCard from './RaceForceMetricsCard';
 import TargetTimePredictorCard from './TargetTimePredictorCard';
+import VelocityToTimeCard from './VelocityToTimeCard';
 import { Gauge, Scale } from 'lucide-react';
 
 function parseEventDistanceM(eventName: string): number {
@@ -223,5 +224,12 @@ export default function CoachForcePredictorTab({
         />
       )}
     </div>
+       <VelocityToTimeCard
+     defaultDistanceM={distanceM || 100}
+     defaultVelocityMs={actualMetrics?.velocityMs || 8.5}
+     effectiveWeightKg={effectiveWeightKg}
+     discipline={discipline}
+   />
   );
 }
+  
