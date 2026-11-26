@@ -223,13 +223,13 @@ export default function CoachForcePredictorTab({
           discipline={discipline}
         />
       )}
+
+      <VelocityToTimeCard
+        defaultDistanceM={distanceM || 100}
+        defaultVelocityMs={actualMetrics?.velocityMs || 8.5}
+        effectiveWeightKg={effectiveWeightKg}
+        discipline={discipline}
+      />
     </div>
-       <VelocityToTimeCard
-     defaultDistanceM={distanceM || 100}
-     defaultVelocityMs={actualMetrics?.velocityMs || 8.5}
-     effectiveWeightKg={effectiveWeightKg}
-     discipline={discipline}
-   />
   );
 }
-  
