@@ -5,7 +5,7 @@ import { calculateHorizontalForce } from '@/lib/biomechanics';
 import { formatMark } from '@/lib/disciplines';
 import { Timer, Zap } from 'lucide-react';
 
-const PRESET_DISTANCES =;
+const PRESET_DISTANCES = Array.of(30, 60, 100, 150, 200, 300, 400, 800, 1500);
 
 export default function VelocityToTimeCard({
   defaultDistanceM = 100,
