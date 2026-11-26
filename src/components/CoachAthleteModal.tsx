@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { calculatePower } from '@/lib/biomechanics';
 import { getEventsForDiscipline } from '@/lib/disciplines';
 import CoachAthleteRacesSection from './CoachAthleteRacesSection';
+import AthleteTestsCard from './AthleteTestsCard';
 import { X, Save } from 'lucide-react';
 
 export default function CoachAthleteModal({
@@ -193,14 +194,21 @@ export default function CoachAthleteModal({
           )}
         </div>
 
-        <CoachAthleteRacesSection
-          athleteId={athlete.id}
-          discipline={discipline}
-          events={events}
-          races={races}
-          wellness={wellness}
-          onChanged={() => onAthleteUpdated(athlete)}
-        />
+     <AthleteTestsCard
+       athleteId={athlete.id}
+       tests={tests}
+       onSaved={() => onAthleteUpdated(athlete)}
+     />
+
+     <CoachAthleteRacesSection
+       athleteId={athlete.id}
+       discipline={discipline}
+       events={events}
+       races={races}
+       wellness={wellness}
+       onChanged={() => onAthleteUpdated(athlete)}
+     />
+
       </div>
     </div>
   );
