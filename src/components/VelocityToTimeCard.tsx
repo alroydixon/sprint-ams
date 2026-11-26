@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { calculateHorizontalForce } from '@/lib/biomechanics';
 import { formatMark } from '@/lib/disciplines';
-import { Timer, Zap } from 'lucide-react';
+import { Timer, Zap, Scale } from 'lucide-react';
 
 const PRESET_DISTANCES = Array.of(30, 60, 100, 150, 200, 300, 400, 800, 1500);
 
@@ -20,6 +20,7 @@ export default function VelocityToTimeCard({
 }) {
   const [distanceInput, setDistanceInput] = useState<string>(String(defaultDistanceM || 100));
   const [velocityInput, setVelocityInput] = useState<string>(String(defaultVelocityMs || 8.5));
+  const [simWeightInput, setSimWeightInput] = useState<string>(String(effectiveWeightKg || 60));
 
   useEffect(() => {
     if (defaultDistanceM > 0) setDistanceInput(String(defaultDistanceM));
@@ -29,8 +30,13 @@ export default function VelocityToTimeCard({
     if (defaultVelocityMs > 0) setVelocityInput(String(defaultVelocityMs));
   }, [defaultVelocityMs]);
 
+  useEffect(() => {
+    if (effectiveWeightKg > 0) setSimWeightInput(String(effectiveWeightKg));
+  }, [effectiveWeightKg]);
+
   const distM = parseFloat(distanceInput);
   const velMs = parseFloat(velocityInput);
+  const simWeightKg = parseFloat(simWeightInput);
 
   const result = useMemo(() => {
     if (!distM || distM <= 0 || !velMs || velMs <= 0 || isNaN(distM) || isNaN(velMs)) return null;
@@ -38,18 +44,35 @@ export default function VelocityToTimeCard({
     const speedKmh = +(velMs * 3.6).toFixed(1);
     const force = calculateHorizontalForce(effectiveWeightKg, distM, predictedTimeS);
     const powerW = force ? +(force.forceN * velMs).toFixed(1) : 0;
-    return { predictedTimeS, speedKmh, force, powerW };
-  }, [distM, velMs, effectiveWeightKg]);
+
+    let weightSim: {
+      newTimeS: number;
+      deltaTimeS: number;
+      newVelMs: number;
+      newForcePerKg: number;
+    } | null = null;
+
+    if (force && force.forceN > 0 && simWeightKg > 0 && !isNaN(simWeightKg)) {
+      // Constant Force F = m_new * (2d / t_new^2)  =>  t_new = sqrt(2 * d * m_new / F)
+      const newTimeS = +Math.sqrt((2 * distM * simWeightKg) / force.forceN).toFixed(2);
+      const deltaTimeS = +(newTimeS - predictedTimeS).toFixed(2);
+      const newVelMs = +(distM / newTimeS).toFixed(2);
+      const newForcePerKg = +(force.forceN / simWeightKg).toFixed(2);
+      weightSim = { newTimeS, deltaTimeS, newVelMs, newForcePerKg };
+    }
+
+    return { predictedTimeS, speedKmh, force, powerW, weightSim };
+  }, [distM, velMs, effectiveWeightKg, simWeightKg]);
 
   return (
     <div className="bg-slate-900 border border-sky-500/30 rounded-xl p-4 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 className="font-bold text-sm text-sky-400 flex items-center gap-1.5">
-            <Timer className="w-4 h-4" /> Velocity (m/s) &rarr; Predicted Time Calculator
+            <Timer className="w-4 h-4" /> Velocity (m/s) &rarr; Predicted Time &amp; Body Mass Simulator
           </h3>
           <p className="text-slate-400 mt-0.5">
-            Enter a target velocity in <span className="font-mono text-white">m/s</span> and distance in metres to work back the predicted time and force required
+            Enter a target velocity in <span className="font-mono text-white">m/s</span> and distance to compute predicted time, or simulate how a body weight change affects time at constant force
           </p>
         </div>
 
@@ -112,7 +135,7 @@ export default function VelocityToTimeCard({
 
             <div className="bg-slate-950 border border-slate-800 rounded-xl p-3">
               <span className="text-slate-400 block flex items-center gap-1">
-                <Zap className="w-3 h-3 text-amber-400" /> Force &amp; Power ({effectiveWeightKg} kg)
+                <Zap className="w-3 h-3 text-amber-400" /> Baseline Force ({effectiveWeightKg} kg)
               </span>
               <strong className="text-lg text-amber-300 font-mono block">
                 {result.force.forceN} N ({result.force.forcePerKg} N/kg)
@@ -124,6 +147,68 @@ export default function VelocityToTimeCard({
           </>
         )}
       </div>
+
+      {/* Body Weight What-If Simulator at Constant Force */}
+      {result?.force && result.weightSim && (
+        <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-3.5 grid grid-cols-1 sm:grid-cols-3 gap-3 items-center">
+          <div>
+            <label className="text-slate-300 font-bold flex items-center gap-1 mb-1">
+              <Scale className="w-3.5 h-3.5 text-amber-400" /> Simulate Body Weight (kg) at {result.force.forceN} N
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                step="0.5"
+                min="25"
+                value={simWeightInput}
+                onChange={(e) => setSimWeightInput(e.target.value)}
+                className="w-28 bg-slate-900 border border-amber-500/40 rounded-lg p-2 text-amber-300 font-mono font-bold"
+              />
+              <button
+                type="button"
+                onClick={() => setSimWeightInput(String(+(effectiveWeightKg - 2).toFixed(1)))}
+                className="px-2 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-emerald-300 text-[11px] font-semibold"
+              >
+                -2 kg
+              </button>
+              <button
+                type="button"
+                onClick={() => setSimWeightInput(String(+(effectiveWeightKg + 2).toFixed(1)))}
+                className="px-2 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-rose-300 text-[11px] font-semibold"
+              >
+                +2 kg
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <span className="text-slate-400 block">Simulated Time at {simWeightKg} kg</span>
+            <strong className="text-lg text-white font-mono">
+              {formatMark(result.weightSim.newTimeS, discipline)}
+            </strong>{' '}
+            <span
+              className={`font-mono font-bold text-xs ${
+                result.weightSim.deltaTimeS < 0
+                  ? 'text-emerald-400'
+                  : result.weightSim.deltaTimeS > 0
+                  ? 'text-rose-400'
+                  : 'text-slate-400'
+              }`}
+            >
+              ({result.weightSim.deltaTimeS > 0 ? '+' : ''}
+              {result.weightSim.deltaTimeS.toFixed(2)}s)
+            </span>
+          </div>
+
+          <div>
+            <span className="text-slate-400 block">New Relative Force &amp; Velocity</span>
+            <strong className="text-amber-300 font-mono">
+              {result.weightSim.newForcePerKg} N/kg
+            </strong>{' '}
+            <span className="text-sky-300 font-mono">• {result.weightSim.newVelMs} m/s</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
